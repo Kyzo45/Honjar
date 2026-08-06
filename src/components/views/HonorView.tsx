@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { fmtTgl, jamAjar, menit } from "@/lib/format";
 
@@ -8,14 +9,28 @@ interface HonorRow {
   mnt: number; jam: number; mk: string; met: string; kls: string;
 }
 
+const MONTH_NAMES: Record<string, string> = {
+  all: "Semua Bulan",
+  "02": "Februari 2026",
+  "03": "Maret 2026",
+  "04": "April 2026",
+  "05": "Mei 2026",
+};
+
 export default function HonorView() {
   const { courses } = useApp();
+  const [selectedMonth, setSelectedMonth] = useState("all");
 
   const rows: HonorRow[] = [];
   courses.forEach((m) => {
     m.rows.forEach((r) => {
       if (r.tipe !== "kuliah" || !r.topik) return;
       if (r.kehadiran === "batal") return;
+      if (r.tgl) {
+        const parts = r.tgl.split("-");
+        const monthNum = parts[1]; // "02", "03", etc.
+        if (selectedMonth !== "all" && monthNum !== selectedMonth) return;
+      }
       const mnt = menit(r.jam![0], r.jam![1]);
       rows.push({
         dsn: r.dosen!, tgl: r.tgl!, a: r.jam![0], b: r.jam![1],
@@ -56,7 +71,7 @@ export default function HonorView() {
   return (
     <section className="view">
       <div className="cards">
-        <div className="stat"><dt>Periode</dt><dd style={{ fontSize: 20 }}>Mei 2026</dd></div>
+        <div className="stat"><dt>Periode</dt><dd style={{ fontSize: 18 }}>{MONTH_NAMES[selectedMonth]}</dd></div>
         <div className="stat"><dt>Dosen tercatat</dt><dd>{no}</dd></div>
         <div className="stat"><dt>Total sesi</dt><dd>{rows.length}</dd></div>
         <div className="stat"><dt>Total jam</dt><dd>{jamTot}</dd></div>
@@ -65,6 +80,25 @@ export default function HonorView() {
         <div className="panel-h">
           <h2>Rekapitulasi jam mengajar</h2>
           <div className="right">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "var(--r)",
+                border: "1px solid var(--rule)",
+                background: "var(--paper)",
+                fontSize: "12.5px",
+                fontWeight: "600",
+                color: "var(--ink)"
+              }}
+            >
+              <option value="all">Semua Bulan</option>
+              <option value="02">Februari 2026</option>
+              <option value="03">Maret 2026</option>
+              <option value="04">April 2026</option>
+              <option value="05">Mei 2026</option>
+            </select>
             <button className="btn btn-sm">Kunci periode</button>
             <button className="btn btn-sm btn-p">Unduh XLSX</button>
           </div>
@@ -83,7 +117,7 @@ export default function HonorView() {
                 <tr>
                   <td colSpan={10}>
                     <div className="empty-state">
-                      <b>Belum ada pertemuan bulan ini</b>
+                      <b>Belum ada pertemuan pada periode ini</b>
                       Rekap terbentuk otomatis setelah PJ mengisi berita acara.
                     </div>
                   </td>

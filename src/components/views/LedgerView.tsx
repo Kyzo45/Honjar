@@ -30,10 +30,11 @@ export default function LedgerView() {
         <div className="ledger-head">
           <span className="id">{curMK.kode}</span>
           <dl>
-            <div><dt>Tingkat / kelas</dt><dd>{curMK.kelas} / semester 2</dd></div>
+            <div><dt>Kelas / Semester</dt><dd>{curMK.kelas} / Semester {curMK.semester}</dd></div>
+            <div><dt>Tipe Kuliah</dt><dd>{curMK.tipe}</dd></div>
+            <div><dt>Jadwal</dt><dd>{curMK.hari}, {curMK.jamMulai}–{curMK.jamSelesai} ({curMK.ruangan})</dd></div>
             <div><dt>Koordinator</dt><dd>{curMK.koor}</dd></div>
-            <div><dt>Pengampu</dt><dd>{curMK.dosen.join(" · ")}</dd></div>
-            <div><dt>Mahasiswa terdaftar</dt><dd><span className="num">{curMK.mhs}</span> orang</dd></div>
+            <div><dt>Dosen</dt><dd>{curMK.dosen.join(" · ")}</dd></div>
           </dl>
         </div>
         <div className="scroll">

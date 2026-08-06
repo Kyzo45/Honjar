@@ -17,6 +17,15 @@ export default function CourseFormModal({ onClose, onSubmit }: Props) {
   const [koor, setKoor] = useState("");
   const [dosenText, setDosenText] = useState("");
   const [pj, setPj] = useState("");
+  
+  // New Fields
+  const [tipe, setTipe] = useState<"Teori" | "Praktikum">("Teori");
+  const [semester, setSemester] = useState("2");
+  const [hari, setHari] = useState("Senin");
+  const [jamMulai, setJamMulai] = useState("07:00");
+  const [jamSelesai, setJamSelesai] = useState("08:40");
+  const [ruangan, setRuangan] = useState("R.301");
+
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const kodeRef = useRef<HTMLInputElement>(null);
 
@@ -38,6 +47,9 @@ export default function CourseFormModal({ onClose, onSubmit }: Props) {
       nama: !nama.trim(),
       kelas: !kelas.trim(),
       mhs: !mhs || Number(mhs) <= 0,
+      semester: !semester || Number(semester) <= 0,
+      hari: !hari.trim(),
+      ruangan: !ruangan.trim(),
     };
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
@@ -51,6 +63,12 @@ export default function CourseFormModal({ onClose, onSubmit }: Props) {
       dosenText,
       mhs: Number(mhs),
       pj: pj.trim() || "—",
+      tipe,
+      semester: Number(semester),
+      hari: hari.trim(),
+      jamMulai,
+      jamSelesai,
+      ruangan: ruangan.trim(),
     });
   };
 
@@ -87,6 +105,23 @@ export default function CourseFormModal({ onClose, onSubmit }: Props) {
                   onChange={(e) => setKelas(e.target.value)} />
               </label>
             </div>
+            <div className="row c3">
+              <label className="f"><span>Tipe Mata Kuliah</span>
+                <select value={tipe} onChange={(e) => setTipe(e.target.value as "Teori" | "Praktikum")}>
+                  <option value="Teori">Teori</option>
+                  <option value="Praktikum">Praktikum</option>
+                </select>
+              </label>
+              <label className="f"><span>Semester</span>
+                <input type="number" min={1} value={semester} style={borderFor("semester")}
+                  onChange={(e) => setSemester(e.target.value)} />
+              </label>
+              <label className="f"><span>Jumlah mahasiswa</span>
+                <input type="number" min={0} value={mhs} placeholder="48"
+                  style={borderFor("mhs")}
+                  onChange={(e) => setMhs(e.target.value)} />
+              </label>
+            </div>
             <div className="row">
               <label className="f"><span>Nama mata kuliah</span>
                 <input type="text" value={nama} placeholder="Contoh: Imunoserologi"
@@ -94,15 +129,40 @@ export default function CourseFormModal({ onClose, onSubmit }: Props) {
                   onChange={(e) => setNama(e.target.value)} />
               </label>
             </div>
-            <div className="row c2">
-              <label className="f"><span>Jumlah mahasiswa</span>
-                <input type="number" min={0} value={mhs} placeholder="48"
-                  style={borderFor("mhs")}
-                  onChange={(e) => setMhs(e.target.value)} />
-              </label>
-              <label className="f"><span>Penanggung Jawab <em>· dosen PJ</em></span>
-                <input type="text" value={pj} placeholder="Nama PJ"
+            <div className="row">
+              <label className="f"><span>Penanggung Jawab (PJ Mahasiswa)</span>
+                <input type="text" value={pj} placeholder="Nama PJ Kelas"
                   onChange={(e) => setPj(e.target.value)} />
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Jadwal Kuliah</legend>
+            <div className="row c2">
+              <label className="f"><span>Hari</span>
+                <select value={hari} onChange={(e) => setHari(e.target.value)}>
+                  <option value="Senin">Senin</option>
+                  <option value="Selasa">Selasa</option>
+                  <option value="Rabu">Rabu</option>
+                  <option value="Kamis">Kamis</option>
+                  <option value="Jumat">Jumat</option>
+                  <option value="Sabtu">Sabtu</option>
+                  <option value="Minggu">Minggu</option>
+                </select>
+              </label>
+              <label className="f"><span>Ruangan</span>
+                <input type="text" value={ruangan} placeholder="R.301 / Lab. Hematologi"
+                  style={borderFor("ruangan")}
+                  onChange={(e) => setRuangan(e.target.value)} />
+              </label>
+            </div>
+            <div className="row c2">
+              <label className="f"><span>Jam Mulai</span>
+                <input type="time" value={jamMulai} onChange={(e) => setJamMulai(e.target.value)} />
+              </label>
+              <label className="f"><span>Jam Selesai</span>
+                <input type="time" value={jamSelesai} onChange={(e) => setJamSelesai(e.target.value)} />
               </label>
             </div>
           </fieldset>
@@ -110,11 +170,11 @@ export default function CourseFormModal({ onClose, onSubmit }: Props) {
           <fieldset>
             <legend>Pengajar</legend>
             <div className="row c2">
-              <label className="f"><span>Koordinator</span>
-                <input type="text" value={koor} placeholder="Nama koordinator"
+              <label className="f"><span>Koordinator Dosen</span>
+                <input type="text" value={koor} placeholder="Nama koordinator dosen"
                   onChange={(e) => setKoor(e.target.value)} />
               </label>
-              <label className="f"><span>Pengampu <em>· pisahkan dengan koma</em></span>
+              <label className="f"><span>Dosen Pengampu <em>· pisahkan dengan koma</em></span>
                 <input type="text" value={dosenText} placeholder="Dosen A, Dosen B"
                   onChange={(e) => setDosenText(e.target.value)} />
               </label>

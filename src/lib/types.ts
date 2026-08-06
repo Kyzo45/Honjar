@@ -1,19 +1,34 @@
-export type Role = "pj" | "admin";
+export type Role = "pj" | "admin" | "mahasiswa";
 
 export type ViewId =
   | "mk"
   | "ledger"
-  | "izin"
   | "monitor"
   | "honor"
   | "master"
-  | "cetak";
+  | "cetak"
+  | "student";
+
+export interface UserSession {
+  id: number;
+  username: string;
+  nama: string;
+  role: Role;
+  nim?: string;
+  kelas?: string;
+}
 
 export type Metode = "Teori" | "Praktikum" | "Lapangan";
 
 export type Kehadiran = "hadir" | "daring" | "diganti" | "batal";
 
 export type StatusMhs = "sakit" | "izin" | "tanpa";
+
+export interface AbsentRecord {
+  nim: string;
+  status: StatusMhs;
+  fileName?: string;
+}
 
 export interface KuliahRow {
   ke: number;
@@ -25,6 +40,8 @@ export interface KuliahRow {
   metode?: Metode;
   dosen?: string;
   kehadiran?: Kehadiran;
+  absents?: AbsentRecord[];
+  isAbsenAktif?: boolean;
 }
 
 export interface UjianRow {
@@ -45,6 +62,12 @@ export interface MataKuliah {
   mhs: number;
   pj: string;
   rows: Row[];
+  tipe: "Teori" | "Praktikum";
+  semester: number;
+  hari: string;
+  jamMulai: string;
+  jamSelesai: string;
+  ruangan: string;
 }
 
 export interface Mahasiswa {
@@ -61,17 +84,10 @@ export interface NewCourseInput {
   dosenText: string;
   mhs: number;
   pj: string;
-}
-
-export type StatusIzin = "diajukan" | "disetujui" | "ditolak";
-
-export interface PengajuanIzin {
-  n: string;
-  nim: string;
-  tgl: string;
-  j: "Sakit" | "Izin";
-  ket: string;
-  f: string;
-  k: number;
-  s: StatusIzin;
+  tipe: "Teori" | "Praktikum";
+  semester: number;
+  hari: string;
+  jamMulai: string;
+  jamSelesai: string;
+  ruangan: string;
 }

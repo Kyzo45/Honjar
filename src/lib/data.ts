@@ -1,4 +1,4 @@
-import type { Mahasiswa, MataKuliah, PengajuanIzin, Row, StatusMhs } from "./types";
+import type { Mahasiswa, MataKuliah, Row } from "./types";
 
 /* =========================================================
    DATA CONTOH — diambil dari dokumen asli program studi
@@ -18,11 +18,6 @@ export const MHS: Mahasiswa[] = [
   { nim: "4211011", nama: "Karina Ayu" },
   { nim: "4211012", nama: "Lukman Hakim" },
 ];
-
-export const IZIN_DISETUJUI: Record<string, StatusMhs> = {
-  "4211005": "sakit",
-  "4211010": "izin",
-};
 
 const TOPIK: (string | null)[] = [
   "Pendahuluan", "Komponen dan fungsi darah", "Hematopoesis", "Eritropoesis",
@@ -52,42 +47,76 @@ export function buildRows(koor: string, isi: number): Row[] {
     const topik = TOPIK[idx];
     const terisi = idx < isi && topik;
     if (terisi) {
+      // Seed a few absents for testing the absent system
+      const absents = i === 1 
+        ? [{ nim: "4211005", status: "sakit" as const, fileName: "surat_dokter.pdf" }]
+        : i === 3 
+        ? [{ nim: "4211010", status: "izin" as const, fileName: "surat_tugas.pdf" }]
+        : [];
+
       rows.push({
         ke: i,
         tipe: "kuliah",
         tgl: TGL[idx] || "2026-05-16",
         jam: JAM[idx] || ["14:40", "16:20"],
-        hadir: HADIR[idx] || 44,
+        hadir: (HADIR[idx] || 44) - absents.length,
         topik,
         metode: idx > 6 ? "Praktikum" : "Teori",
         dosen: koor,
         kehadiran: "hadir",
+        absents,
       });
     } else {
-      rows.push({ ke: i, tipe: "kuliah" });
+      rows.push({ ke: i, tipe: "kuliah", absents: [] });
     }
   }
   return rows;
 }
 
 interface MataKuliahSeed {
-  id: number; kode: string; nama: string; kelas: string; sks: string;
-  koor: string; dosen: string[]; mhs: number; pj: string; isi: number;
+  id: number;
+  kode: string;
+  nama: string;
+  kelas: string;
+  sks: string;
+  koor: string;
+  dosen: string[];
+  mhs: number;
+  pj: string;
+  isi: number;
+  tipe: "Teori" | "Praktikum";
+  semester: number;
+  hari: string;
+  jamMulai: string;
+  jamSelesai: string;
+  ruangan: string;
 }
 
 const SEED: MataKuliahSeed[] = [
-  { id: 1, kode: "TLM2104", nama: "Hematologi Rutin dan Lengkap", kelas: "1C", sks: "2 (1T/1P)",
+  {
+    id: 1, kode: "TLM2104", nama: "Hematologi Rutin dan Lengkap", kelas: "1C", sks: "2 (1T/1P)",
     koor: "Dr. Arina Novilla, M.Kes.", dosen: ["M. Ratna Ningrum, M.Si.", "Taufik Gunawan, S.Tr.Kes."],
-    mhs: 48, pj: "Rifqi Aulia", isi: 9 },
-  { id: 2, kode: "TLM2108", nama: "Flebotomi dan Pengelolaan Spesimen", kelas: "1C", sks: "3 (1T/2P)",
+    mhs: 48, pj: "Rifqi Aulia", isi: 9, tipe: "Teori", semester: 2,
+    hari: "Senin", jamMulai: "07:00", jamSelesai: "08:40", ruangan: "R.301"
+  },
+  {
+    id: 2, kode: "TLM2108", nama: "Flebotomi dan Pengelolaan Spesimen", kelas: "1C", sks: "3 (1T/2P)",
     koor: "Dr. Arina Novilla, M.Kes.", dosen: ["Bayu Dwi Rianto, M.Biomed."],
-    mhs: 47, pj: "Rifqi Aulia", isi: 12 },
-  { id: 3, kode: "TLM2112", nama: "Urinalisis dan Cairan Tubuh", kelas: "1C", sks: "2 (1T/1P)",
+    mhs: 47, pj: "Rifqi Aulia", isi: 10, tipe: "Praktikum", semester: 2,
+    hari: "Selasa", jamMulai: "13:00", jamSelesai: "15:30", ruangan: "Lab. Hematologi"
+  },
+  {
+    id: 3, kode: "TLM2112", nama: "Urinalisis dan Cairan Tubuh", kelas: "1C", sks: "2 (1T/1P)",
     koor: "Bayu Dwi Rianto, M.Biomed.", dosen: ["Dr. Erick Khristian, M.Si."],
-    mhs: 48, pj: "Rifqi Aulia", isi: 6 },
-  { id: 4, kode: "TLM2116", nama: "Komunikasi dan Promosi Kesehatan", kelas: "1C", sks: "2 (2T)",
+    mhs: 48, pj: "Rifqi Aulia", isi: 6, tipe: "Teori", semester: 2,
+    hari: "Kamis", jamMulai: "09:40", jamSelesai: "11:20", ruangan: "R.302"
+  },
+  {
+    id: 4, kode: "TLM2116", nama: "Komunikasi dan Promosi Kesehatan", kelas: "1C", sks: "2 (2T)",
     koor: "Bayu Dwi Rianto, M.Biomed.", dosen: ["Anggi Sandika, S.Tr.Kes., MM."],
-    mhs: 48, pj: "Rifqi Aulia", isi: 4 },
+    mhs: 48, pj: "Rifqi Aulia", isi: 4, tipe: "Teori", semester: 2,
+    hari: "Sabtu", jamMulai: "08:00", jamSelesai: "09:40", ruangan: "R.204"
+  },
 ];
 
 export function buildInitialCourses(): MataKuliah[] {
@@ -95,16 +124,11 @@ export function buildInitialCourses(): MataKuliah[] {
     id: m.id, kode: m.kode, nama: m.nama, kelas: m.kelas, sks: m.sks,
     koor: m.koor, dosen: m.dosen, mhs: m.mhs, pj: m.pj,
     rows: buildRows(m.koor, m.isi),
+    tipe: m.tipe,
+    semester: m.semester,
+    hari: m.hari,
+    jamMulai: m.jamMulai,
+    jamSelesai: m.jamSelesai,
+    ruangan: m.ruangan,
   }));
 }
-
-export const IZIN: PengajuanIzin[] = [
-  { n: "Elsa Nurhaliza", nim: "4211005", tgl: "16 Mei 2026", j: "Sakit",
-    ket: "Demam berdarah, rawat inap 3 hari", f: "surat-dokter.pdf", k: 4, s: "diajukan" },
-  { n: "Joko Prasetyo", nim: "4211010", tgl: "16 Mei 2026", j: "Izin",
-    ket: "Lomba PIMNAS tingkat nasional", f: "surat-tugas.pdf", k: 4, s: "disetujui" },
-  { n: "Bagas Nurwahid", nim: "4211002", tgl: "13 Mei 2026", j: "Sakit",
-    ket: "Tifus", f: "—", k: 2, s: "diajukan" },
-  { n: "Citra Halimah", nim: "4211003", tgl: "11 Mei 2026", j: "Izin",
-    ket: "Menghadiri pemakaman keluarga", f: "surat-keluarga.jpg", k: 3, s: "ditolak" },
-];

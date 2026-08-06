@@ -6,14 +6,21 @@ import Topbar from "@/components/Topbar";
 import SheetModal from "@/components/SheetModal";
 import MkView from "@/components/views/MkView";
 import LedgerView from "@/components/views/LedgerView";
-import IzinView from "@/components/views/IzinView";
 import MonitorView from "@/components/views/MonitorView";
 import HonorView from "@/components/views/HonorView";
 import MasterView from "@/components/views/MasterView";
 import CetakView from "@/components/views/CetakView";
+import LoginView from "@/components/views/LoginView";
+import StudentView from "@/components/views/StudentView";
 
 function Shell() {
-  const { view, courses, editing, editingRow } = useApp();
+  const { view, courses, editing, editingRow, user } = useApp();
+
+  // Jika belum login, tampilkan halaman Login
+  if (!user) {
+    return <LoginView />;
+  }
+
   const editingCourse = editing ? courses.find((c) => c.id === editing.courseId) : null;
 
   return (
@@ -25,11 +32,11 @@ function Shell() {
           <div className="body">
             {view === "mk" && <MkView />}
             {view === "ledger" && <LedgerView />}
-            {view === "izin" && <IzinView />}
             {view === "monitor" && <MonitorView />}
             {view === "honor" && <HonorView />}
             {view === "master" && <MasterView />}
             {view === "cetak" && <CetakView />}
+            {view === "student" && <StudentView />}
           </div>
         </div>
       </div>

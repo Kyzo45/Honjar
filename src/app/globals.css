@@ -343,9 +343,37 @@ textarea{resize:vertical;min-height:62px}
   background:#fff;width:100%;max-width:640px;padding:26px 28px;
   box-shadow:0 2px 12px rgba(22,35,61,.14);font-size:11px;
 }
-.page-kop{text-align:center;border-bottom:2.5px solid var(--ink);padding-bottom:8px;margin-bottom:12px}
-.page-kop b{display:block;font-family:var(--display);font-size:13px;letter-spacing:.02em}
-.page-kop span{font-size:9.5px;color:var(--ink-2)}
+.page-kop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 3.5px double var(--ink);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+.page-kop-logo {
+  width: 55px;
+  height: auto;
+  flex-shrink: 0;
+}
+.page-kop-text {
+  flex: 1;
+  text-align: center;
+}
+.page-kop-text b {
+  display: block;
+  font-family: var(--display);
+  font-size: 11px;
+  letter-spacing: .01em;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.page-kop-text span {
+  display: block;
+  font-size: 8px;
+  color: var(--ink-2);
+  margin-top: 3px;
+}
 .page h4{text-align:center;margin:0 0 12px;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
 .page table{width:100%;border-collapse:collapse;font-size:9.5px}
 .page th,.page td{border:1px solid #8B93A4;padding:4px 5px;text-align:left;vertical-align:top}
@@ -371,3 +399,442 @@ textarea{resize:vertical;min-height:62px}
   .scrim{padding:0}
   .sheet{border-radius:0;min-height:100vh}
 }
+
+/* ==========================================
+   HALAMAN LOGIN STYLING
+   ========================================== */
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1b382b 0%, #0d1e16 100%);
+  padding: 20px;
+}
+.login-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 440px;
+  padding: 32px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.login-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.logos {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.logo-unjani-login {
+  height: 76px;
+  width: auto;
+}
+.login-header h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1b382b;
+  margin: 4px 0 0;
+  letter-spacing: 0.05em;
+}
+.login-header h3 {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  margin: 2px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.login-header .subtitle {
+  font-size: 11px;
+  color: var(--ink-3);
+  line-height: 1.4;
+  margin: 0;
+}
+.login-error {
+  background: #fdf2f2;
+  border: 1px solid #f8b4b4;
+  color: #c81e1e;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.login-form .form-group {
+  margin-bottom: 16px;
+}
+.login-form label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.login-form input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.login-form input:focus {
+  border-color: #1b382b;
+}
+.btn-login {
+  width: 100%;
+  background: #1b382b;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+.btn-login:hover {
+  background: #12251d;
+}
+.btn-login:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+.demo-accounts {
+  margin-top: 24px;
+  border-top: 1px dashed #d1d5db;
+  padding-top: 16px;
+}
+.demo-accounts p {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+.demo-buttons {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.btn-demo {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: var(--ink);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+.btn-demo span {
+  font-weight: 700;
+  margin-right: 4px;
+}
+.btn-demo.admin span { color: #85144b; }
+.btn-demo.pj span { color: #0074d9; }
+.btn-demo.mhs span { color: #2ecc40; }
+.btn-demo:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+/* ==========================================
+   PORTAL MAHASISWA STYLING
+   ========================================== */
+.student-view {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  height: calc(100vh - 100px);
+}
+.student-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-right: 1px solid var(--border);
+  padding-right: 16px;
+}
+.student-course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  flex: 1;
+}
+.student-course-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.student-course-card:hover {
+  border-color: var(--ink-3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.student-course-card.active {
+  border-color: var(--verd);
+  background: var(--back);
+  box-shadow: 0 0 0 1px var(--verd);
+}
+.card-header-mhs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.student-course-card h4 {
+  font-size: 14px;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.student-course-card .schedule {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin: 0 0 4px;
+}
+.student-course-card .info {
+  font-size: 10px;
+  color: var(--ink-3);
+  margin: 0;
+}
+.student-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.student-course-header {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+}
+.student-course-header h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: var(--ink);
+}
+.student-course-header .subtext {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.student-stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.stat-card {
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-card.hadir { background: #f3faf7; border: 1px solid #def7ec; color: #03543f; }
+.stat-card.sakit { background: #fdfdea; border: 1px solid #fdf6b2; color: #723b13; }
+.stat-card.izin { background: #f0f5ff; border: 1px solid #ebf5ff; color: #1e429f; }
+.stat-card.tanpa { background: #fdf2f2; border: 1px solid #f8b4b4; color: #9b1c1c; }
+.stat-card.total { background: #f4f6f7; border: 1px solid #e5e7eb; color: var(--ink); }
+.stat-card .count { font-size: 20px; font-weight: 700; }
+.stat-card .lbl { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.02em; }
+
+.sessions-list-mhs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.session-row-mhs {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.session-row-mhs.exam {
+  background: #fafaf9;
+  border-style: dashed;
+}
+.session-row-mhs.empty {
+  border-color: #e5e7eb;
+}
+.sess-badge {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  width: 65px;
+  text-align: center;
+}
+.sess-content {
+  flex: 1;
+}
+.sess-topik {
+  font-size: 13px;
+  color: var(--ink);
+}
+.sess-details {
+  display: flex;
+  gap: 12px;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-top: 4px;
+}
+.empty-text {
+  color: var(--ink-3);
+  font-size: 12px;
+  font-style: italic;
+}
+.status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: inline-block;
+}
+.status-badge.hadir { background: #def7ec; color: #03543f; }
+.status-badge.sakit { background: #fdf6b2; color: #723b13; }
+.status-badge.izin { background: #ebf5ff; color: #1e429f; }
+.status-badge.tanpa { background: #f8b4b4; color: #9b1c1c; }
+.status-badge.exam { background: #e5e7eb; color: var(--ink-2); }
+.status-badge.pending { background: #f3f4f6; color: var(--ink-3); }
+
+.btn-absen-mandiri {
+  background: var(--verd);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: background 0.2s;
+  font-family: inherit;
+}
+.btn-absen-mandiri:hover {
+  background: #0f2219;
+}
+
+.pin-form-inline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.pin-form-inline input {
+  width: 90px;
+  padding: 5px 8px;
+  border: 1px solid var(--verd);
+  border-radius: 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+  outline: none;
+}
+.pin-form-inline button {
+  background: var(--verd);
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.pin-form-inline button.cancel {
+  background: #e5e7eb;
+  color: var(--ink);
+}
+
+.student-message {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.student-message.success { background: #def7ec; border: 1px solid #bcf0da; color: #03543f; }
+.student-message.error { background: #fdf2f2; border: 1px solid #f8b4b4; color: #9b1c1c; }
+.student-message .close-btn { background: none; border: none; font-size: 16px; cursor: pointer; color: inherit; }
+
+/* ==========================================
+   LOGOUT PROFILE STYLING IN RAIL
+   ========================================== */
+.profile-info {
+  padding: 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  text-align: left;
+}
+.profile-name {
+  margin: 0 0 2px;
+  font-weight: 700;
+  font-size: 13px;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-role {
+  font-size: 10px;
+  font-weight: 600;
+  color: #2ecc40;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: block;
+}
+.profile-sub {
+  font-size: 10px;
+  color: #8b93a4;
+  display: block;
+  margin-top: 1px;
+}
+.btn-logout {
+  width: 100%;
+  background: #85144b;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+.btn-logout:hover {
+  background: #600d35;
+}
+

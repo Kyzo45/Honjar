@@ -1,8 +1,7 @@
 "use client";
 
 import { useApp } from "@/context/AppContext";
-import { ROLE } from "@/lib/roles";
-import type { Role, ViewId } from "@/lib/types";
+import type { ViewId } from "@/lib/types";
 
 function NavButton({ go, icon, label, badge }: { go: ViewId; icon: string; label: string; badge?: string }) {
   const { view, go: navigate } = useApp();
@@ -15,11 +14,14 @@ function NavButton({ go, icon, label, badge }: { go: ViewId; icon: string; label
   );
 }
 
-const ROLE_ORDER: Role[] = ["pj", "admin"];
-const ROLE_LABEL: Record<Role, string> = { pj: "Penanggung Jawab", admin: "Admin" };
-
 export default function Rail() {
-  const { role, setRole } = useApp();
+  const { role, user, logout } = useApp();
+
+  const roleLabel = role === "admin" 
+    ? "Admin Prodi" 
+    : role === "pj" 
+    ? "Penanggung Jawab" 
+    : "Mahasiswa";
 
   return (
     <nav className="rail">
@@ -32,7 +34,6 @@ export default function Rail() {
         <div className="rail-group">
           <p className="rail-label">Pengisian</p>
           <NavButton go="mk" icon="▤" label="Mata kuliah saya" />
-          <NavButton go="izin" icon="✉" label="Pengajuan izin" badge="3" />
         </div>
       )}
 
@@ -46,18 +47,22 @@ export default function Rail() {
         </div>
       )}
 
-      <div className="whoami">
-        <p>
-          Masuk sebagai
-          <b>{ROLE[role].name}</b>
-        </p>
-        <div className="roleswap" role="group" aria-label="Ganti peran untuk demo">
-          {ROLE_ORDER.map((r) => (
-            <button key={r} data-role={r} aria-pressed={role === r} onClick={() => setRole(r)}>
-              {ROLE_LABEL[r]}
-            </button>
-          ))}
+      {role === "mahasiswa" && (
+        <div className="rail-group">
+          <p className="rail-label">Mahasiswa</p>
+          <NavButton go="student" icon="▢" label="Portal presensi" />
         </div>
+      )}
+
+      <div className="whoami">
+        <div className="profile-info">
+          <p className="profile-name">{user?.nama || "User"}</p>
+          <span className="profile-role">{roleLabel}</span>
+          {user?.nim && <span className="profile-sub">NIM: {user.nim}</span>}
+        </div>
+        <button onClick={logout} className="btn-logout">
+          <i>⎋</i> Keluar / Logout
+        </button>
       </div>
     </nav>
   );

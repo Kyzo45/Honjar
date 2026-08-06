@@ -2,18 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { IZIN_DISETUJUI, MHS } from "@/lib/data";
+import { MHS } from "@/lib/data";
 import { jamAjar, menit } from "@/lib/format";
-import type { Kehadiran, KuliahRow, MataKuliah, Metode, StatusMhs } from "@/lib/types";
+import type { Kehadiran, KuliahRow, MataKuliah, Metode, StatusMhs, AbsentRecord } from "@/lib/types";
 
-const DOSEN_OPTIONS = [
-  "Dr. Arina Novilla, M.Kes.",
-  "M. Ratna Ningrum, M.Si.",
-  "Taufik Gunawan, S.Tr.Kes.",
-  "— dosen lain —",
-];
-
-const METODE_OPTIONS: Metode[] = ["Teori", "Praktikum", "Seminar"];
+const METODE_OPTIONS: Metode[] = ["Teori", "Praktikum", "Lapangan"];
 
 const KEHADIRAN_OPTIONS: { value: Kehadiran; label: string }[] = [
   { value: "hadir", label: "Hadir di kelas" },
@@ -45,7 +38,7 @@ interface Props {
 }
 
 export default function SheetModal({ course, row }: Props) {
-  const { closeSheet, saveRow } = useApp();
+  const { closeSheet, saveRow, lecturers } = useApp();
   const isEdit = Boolean(row.topik);
 
   const [tgl, setTgl] = useState(row.tgl || todayISO());
@@ -53,14 +46,20 @@ export default function SheetModal({ course, row }: Props) {
   const [selesai, setSelesai] = useState(row.jam ? row.jam[1] : "16:20");
   const [metode, setMetode] = useState<Metode>(row.metode || "Teori");
   const [topik, setTopik] = useState(row.topik || "");
-  const [dosen, setDosen] = useState(DOSEN_OPTIONS[0]);
+  
+  // Set dynamic default dosen
+  const [dosen, setDosen] = useState(row.dosen || lecturers[0] || "Dr. Arina Novilla, M.Kes.");
   const [kehadiran, setKehadiran] = useState<Kehadiran>(row.kehadiran || "hadir");
   const [topikError, setTopikError] = useState(false);
   const topikRef = useRef<HTMLTextAreaElement>(null);
 
+  // Load existing absents from row state instead of static dummy data
   const [absentList, setAbsentList] = useState<AbsentEntry[]>(() =>
-    Object.entries(IZIN_DISETUJUI).map(([nim, status]) => ({ nim, status, locked: true }))
+    row.absents
+      ? row.absents.map((a) => ({ nim: a.nim, status: a.status, locked: false, fileName: a.fileName }))
+      : []
   );
+  
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -104,10 +103,10 @@ export default function SheetModal({ course, row }: Props) {
     setSearch("");
   };
   const removeAbsent = (nim: string) => {
-    setAbsentList((prev) => prev.filter((a) => a.nim !== nim || a.locked));
+    setAbsentList((prev) => prev.filter((a) => a.nim !== nim));
   };
   const setStatus = (nim: string, status: StatusMhs) => {
-    setAbsentList((prev) => prev.map((a) => (a.nim === nim && !a.locked ? { ...a, status } : a)));
+    setAbsentList((prev) => prev.map((a) => (a.nim === nim ? { ...a, status } : a)));
   };
   const setFile = (nim: string, fileName: string) => {
     setAbsentList((prev) => prev.map((a) => (a.nim === nim ? { ...a, fileName } : a)));
@@ -120,10 +119,22 @@ export default function SheetModal({ course, row }: Props) {
       return;
     }
     setTopikError(false);
+
+    const mappedAbsents: AbsentRecord[] = absentList.map((a) => ({
+      nim: a.nim,
+      status: a.status,
+      fileName: a.fileName
+    }));
+
     saveRow(course.id, row.ke, {
-      tgl, jam: [mulai, selesai], topik: topik.trim(),
-      metode, dosen, kehadiran,
+      tgl,
+      jam: [mulai, selesai],
+      topik: topik.trim(),
+      metode,
+      dosen,
+      kehadiran,
       hadir: course.mhs - absentList.length,
+      absents: mappedAbsents,
     });
   };
 
@@ -187,7 +198,7 @@ export default function SheetModal({ course, row }: Props) {
             <div className="row c2">
               <label className="f"><span>Dosen yang mengajar</span>
                 <select value={dosen} onChange={(e) => setDosen(e.target.value)}>
-                  {DOSEN_OPTIONS.map((d) => <option key={d}>{d}</option>)}
+                  {lecturers.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </label>
               <label className="f"><span>Kehadiran dosen <em>· pengganti tanda tangan</em></span>
@@ -207,7 +218,6 @@ export default function SheetModal({ course, row }: Props) {
             </div>
             <p className="att-hint">
               Semua dianggap hadir. Tambahkan mahasiswa yang tidak hadir, lalu pilih keterangannya.
-              Nama bertanda <span className="lock">🔒</span> punya izin yang sudah disetujui dan tidak dapat diubah di sini.
             </p>
 
             <label className="f"><span>Mahasiswa yang tidak hadir</span>
@@ -253,16 +263,12 @@ export default function SheetModal({ course, row }: Props) {
                         <b>{student?.nama}</b>
                         <span>{a.nim}</span>
                       </div>
-                      {a.locked ? (
-                        <span className="lock-badge">🔒 {STATUS_LABEL[a.status]} · sudah disetujui</span>
-                      ) : (
-                        <select value={a.status} onChange={(e) => setStatus(a.nim, e.target.value as StatusMhs)}>
-                          <option value="tanpa">Tanpa Keterangan</option>
-                          <option value="sakit">Sakit</option>
-                          <option value="izin">Izin</option>
-                        </select>
-                      )}
-                      {needsUpload && !a.locked && (
+                      <select value={a.status} onChange={(e) => setStatus(a.nim, e.target.value as StatusMhs)}>
+                        <option value="tanpa">Tanpa Keterangan</option>
+                        <option value="sakit">Sakit</option>
+                        <option value="izin">Izin</option>
+                      </select>
+                      {needsUpload && (
                         <label className={`upload-chip ${a.fileName ? "done" : ""}`}>
                           <input
                             type="file"
@@ -271,9 +277,7 @@ export default function SheetModal({ course, row }: Props) {
                           {a.fileName ? `📎 ${a.fileName}` : `Unggah surat ${a.status === "sakit" ? "sakit" : "izin"}`}
                         </label>
                       )}
-                      {!a.locked && (
-                        <button type="button" className="rm" aria-label="Hapus" onClick={() => removeAbsent(a.nim)}>✕</button>
-                      )}
+                      <button type="button" className="rm" aria-label="Hapus" onClick={() => removeAbsent(a.nim)}>✕</button>
                     </div>
                   );
                 })}
