@@ -1,7 +1,23 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 import type { MataKuliah, Row, AbsentRecord } from "@/lib/types";
-import { mockCourses } from "@/lib/data";
+import { buildInitialCourses } from "@/lib/data";
+
+function formatDate(date: any): string | undefined {
+  if (!date) return undefined;
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return undefined;
+
+  // Jika input aslinya adalah string bertipe YYYY-MM-DD
+  if (typeof date === "string" && date.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+    return date.slice(0, 10);
+  }
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export async function GET(req: Request) {
   try {
@@ -73,7 +89,7 @@ export async function GET(req: Request) {
           rows.push({
             ke: p.ke,
             tipe: "kuliah",
-            tgl: p.tanggal ? new Date(p.tanggal).toISOString().slice(0, 10) : undefined,
+            tgl: formatDate(p.tanggal),
             jam: p.jam_mulai && p.jam_selesai
               ? [p.jam_mulai.slice(0, 5), p.jam_selesai.slice(0, 5)]
               : undefined,
@@ -111,7 +127,7 @@ export async function GET(req: Request) {
     return NextResponse.json(fullCourses);
   } catch (error: any) {
     console.warn("PostgreSQL offline. Menggunakan data mata kuliah mock:", error.message);
-    return NextResponse.json(mockCourses);
+    return NextResponse.json(buildInitialCourses());
   }
 }
 

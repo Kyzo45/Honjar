@@ -29,12 +29,13 @@ export default function LoginView() {
   };
 
   const handleQuickLogin = async (user: string) => {
+    const pwd = user === "admin" ? "admin" : "123456";
     setUsername(user);
-    setPassword("123456");
+    setPassword(pwd);
     setError(null);
     setSubmitting(true);
 
-    const res = await login(user, "123456");
+    const res = await login(user, pwd);
     setSubmitting(false);
 
     if (!res.success) {
@@ -88,19 +89,13 @@ export default function LoginView() {
         </form>
 
         <div className="demo-accounts">
-          <p>Akses Cepat Akun Demo (Sandi: 123456):</p>
+          <p>Akses Cepat Akun Demo (Sandi: admin / 123456):</p>
           <div className="demo-buttons">
-            <button onClick={() => handleQuickLogin("sri.wahyuni")} className="btn-demo admin">
-              <span>Admin</span> Sri Wahyuni (Prodi)
+            <button onClick={() => handleQuickLogin("admin")} className="btn-demo admin">
+              <span>Admin</span> admin
             </button>
             <button onClick={() => handleQuickLogin("rifqi.aulia")} className="btn-demo pj">
-              <span>PJ Kelas</span> Rifqi Aulia
-            </button>
-            <button onClick={() => handleQuickLogin("elsa.nurhaliza")} className="btn-demo mhs">
-              <span>Mahasiswa</span> Elsa Nurhaliza (1C)
-            </button>
-            <button onClick={() => handleQuickLogin("joko.prasetyo")} className="btn-demo mhs">
-              <span>Mahasiswa</span> Joko Prasetyo (1C)
+              <span>PJ Kelas</span> rifqi.aulia
             </button>
           </div>
         </div>

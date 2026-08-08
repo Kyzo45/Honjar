@@ -17,11 +17,7 @@ function NavButton({ go, icon, label, badge }: { go: ViewId; icon: string; label
 export default function Rail() {
   const { role, user, logout } = useApp();
 
-  const roleLabel = role === "admin" 
-    ? "Admin Prodi" 
-    : role === "pj" 
-    ? "Penanggung Jawab" 
-    : "Mahasiswa";
+  const roleLabel = role === "admin" ? "Admin Prodi" : "Penanggung Jawab";
 
   return (
     <nav className="rail">
@@ -47,18 +43,10 @@ export default function Rail() {
         </div>
       )}
 
-      {role === "mahasiswa" && (
-        <div className="rail-group">
-          <p className="rail-label">Mahasiswa</p>
-          <NavButton go="student" icon="▢" label="Portal presensi" />
-        </div>
-      )}
-
       <div className="whoami">
         <div className="profile-info">
           <p className="profile-name">{user?.nama || "User"}</p>
           <span className="profile-role">{roleLabel}</span>
-          {user?.nim && <span className="profile-sub">NIM: {user.nim}</span>}
         </div>
         <button onClick={logout} className="btn-logout">
           <i>⎋</i> Keluar / Logout

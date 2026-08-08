@@ -31,7 +31,6 @@ interface AppState {
   addLecturer: (name: string) => void;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  submitPresensiMandiri: (courseId: number, ke: number, pin: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -211,9 +210,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (Array.isArray(freshCourses)) setCourses(freshCourses);
 
         // Arahkan halaman awal berdasarkan peran
-        if (data.user.role === "mahasiswa") {
-          setView("student");
-        } else if (data.user.role === "admin") {
+        if (data.user.role === "admin") {
           setView("honor");
         } else {
           setView("mk");
@@ -240,43 +237,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
   };
 
-  // 7. Pengajuan Presensi Mandiri Mahasiswa (Masukan PIN)
-  const submitPresensiMandiri = async (courseId: number, ke: number, pin: string): Promise<{ success: boolean; error?: string }> => {
-    if (!user || !user.nim) {
-      return { success: false, error: "Sesi Anda tidak valid sebagai mahasiswa" };
-    }
-    try {
-      const res = await fetch("/api/sessions/checkin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseId, ke, pin, nim: user.nim })
-      });
-      const data = await res.json();
-      if (data.success) {
-        // Ambil data mata kuliah terbaru agar dashboard mahasiswa dan absensi kelas sinkron
-        const fresh = await fetch("/api/courses").then((r) => r.json());
-        if (Array.isArray(fresh)) setCourses(fresh);
-        return { success: true };
-      } else {
-        return { success: false, error: data.error };
-      }
-    } catch (err) {
-      console.error("Presensi mandiri failed:", err);
-      return { success: false, error: "Koneksi terputus saat memproses presensi" };
-    }
-  };
-
   const [title, sub] = view === "ledger"
     ? [curMK.nama, `${curMK.kode} · Kelas ${curMK.kelas} · Dosen PJ ${curMK.pj}`]
-    : view === "student"
-    ? ["Portal Presensi Mahasiswa", `Masuk sebagai ${user?.nama || "Mahasiswa"} · ${user?.nim || "NIM"}`]
     : TITLE[view] || ["", ""];
 
   const value: AppState = {
     role, view, courses, curMK, title, sub,
     editing, editingRow, lecturers, loading, user,
     setRole, go, selectCourse, openSheet, closeSheet, saveRow, addCourse, addLecturer,
-    login, logout, submitPresensiMandiri
+    login, logout
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

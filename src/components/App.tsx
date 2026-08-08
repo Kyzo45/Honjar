@@ -11,7 +11,6 @@ import HonorView from "@/components/views/HonorView";
 import MasterView from "@/components/views/MasterView";
 import CetakView from "@/components/views/CetakView";
 import LoginView from "@/components/views/LoginView";
-import StudentView from "@/components/views/StudentView";
 
 function Shell() {
   const { view, courses, editing, editingRow, user } = useApp();
@@ -36,7 +35,6 @@ function Shell() {
             {view === "honor" && <HonorView />}
             {view === "master" && <MasterView />}
             {view === "cetak" && <CetakView />}
-            {view === "student" && <StudentView />}
           </div>
         </div>
       </div>

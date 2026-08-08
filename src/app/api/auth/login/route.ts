@@ -11,10 +11,7 @@ export async function POST(req: Request) {
   try {
     // Ambil data user dari PostgreSQL
     const { rows } = await pool.query(
-      `SELECT u.id, u.username, u.nama, u.role, u.mahasiswa_nim as nim, m.kelas 
-       FROM users u 
-       LEFT JOIN mahasiswa m ON u.mahasiswa_nim = m.nim 
-       WHERE LOWER(u.username) = LOWER($1)`,
+      `SELECT id, username, nama, role FROM users WHERE LOWER(username) = LOWER($1)`,
       [username.trim()]
     );
 
@@ -22,6 +19,14 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "Username tidak terdaftar" }, { status: 404 });
+    }
+
+    // Blokir jika perannya adalah mahasiswa
+    if (user.role === "mahasiswa") {
+      return NextResponse.json(
+        { error: "Mahasiswa tidak perlu masuk. Presensi mandiri ditiadakan, kehadiran diinput langsung oleh PJ kelas." },
+        { status: 403 }
+      );
     }
 
     if (password !== "123456" && password !== "admin") {
@@ -35,24 +40,27 @@ export async function POST(req: Request) {
         username: user.username,
         nama: user.nama,
         role: user.role,
-        nim: user.nim || undefined,
-        kelas: user.kelas || undefined,
       },
     });
   } catch (error: any) {
     console.warn("PostgreSQL offline. Menggunakan data login mock:", error.message);
     
-    // Data akun demo cadangan (offline fallback)
+    // Data akun demo cadangan (offline fallback) - Hanya untuk Admin dan PJ
     const mockUsers: Record<string, any> = {
-      "sri.wahyuni": { id: 1, username: "sri.wahyuni", nama: "Sri Wahyuni", role: "admin" },
-      "rifqi.aulia": { id: 2, username: "rifqi.aulia", nama: "Rifqi Aulia", role: "pj" },
-      "elsa.nurhaliza": { id: 3, username: "elsa.nurhaliza", nama: "Elsa Nurhaliza", role: "mahasiswa", nim: "4211005", kelas: "1C" },
-      "joko.prasetyo": { id: 4, username: "joko.prasetyo", nama: "Joko Prasetyo", role: "mahasiswa", nim: "4211010", kelas: "1C" },
+      "admin": { id: 1, username: "admin", nama: "Administrator", role: "admin" },
+      "sri.wahyuni": { id: 2, username: "sri.wahyuni", nama: "Sri Wahyuni", role: "admin" },
+      "rifqi.aulia": { id: 3, username: "rifqi.aulia", nama: "Rifqi Aulia", role: "pj" },
     };
 
     const user = mockUsers[username.toLowerCase().trim()];
 
     if (!user) {
+      if (username.toLowerCase().trim().includes("elsa") || username.toLowerCase().trim().includes("joko")) {
+        return NextResponse.json(
+          { error: "Mahasiswa tidak perlu masuk. Kehadiran akan diinput langsung oleh PJ kelas." },
+          { status: 403 }
+        );
+      }
       return NextResponse.json({ error: "Username demo tidak dikenal" }, { status: 404 });
     }
 

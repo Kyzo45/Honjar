@@ -1,4 +1,4 @@
-export type Role = "pj" | "admin" | "mahasiswa";
+export type Role = "pj" | "admin";
 
 export type ViewId =
   | "mk"
@@ -6,8 +6,7 @@ export type ViewId =
   | "monitor"
   | "honor"
   | "master"
-  | "cetak"
-  | "student";
+  | "cetak";
 
 export interface UserSession {
   id: number;
