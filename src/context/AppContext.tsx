@@ -33,6 +33,8 @@ interface AppState {
   deleteLecturer: (name: string) => void;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  menuOpen: boolean;
+  setMenuOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -65,6 +67,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<ViewId>("mk");
   const [curMkId, setCurMkId] = useState<number>(1);
   const [editing, setEditing] = useState<EditingTarget | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // 1. Muat data awal dari API MySQL/Postgres
   useEffect(() => {
@@ -90,16 +93,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [courses, curMkId]
   );
 
-  const go = (v: ViewId) => setView(v);
+  const go = (v: ViewId) => {
+    setView(v);
+    setMenuOpen(false);
+  };
 
   const setRole = (r: Role) => {
     setRoleState(r);
     go(ROLE[r].go);
+    setMenuOpen(false);
   };
 
   const selectCourse = (id: number) => {
     setCurMkId(id);
     go("ledger");
+    setMenuOpen(false);
   };
 
   const openSheet = (courseId: number, ke: number) => setEditing({ courseId, ke });
@@ -311,7 +319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     role, view, courses, curMK, title, sub,
     editing, editingRow, lecturers, loading, user,
     setRole, go, selectCourse, openSheet, closeSheet, saveRow, addCourse, updateCourse, addLecturer, deleteLecturer,
-    login, logout
+    login, logout, menuOpen, setMenuOpen
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

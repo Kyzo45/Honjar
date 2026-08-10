@@ -839,6 +839,10 @@ textarea{resize:vertical;min-height:62px}
 }
 
 @media print {
+  @page {
+    margin: 0; /* Menghilangkan header default peramban (tanggal, judul) & footer (URL, halaman) */
+  }
+
   /* Sembunyikan elemen navigasi dan kontrol */
   .rail, .topbar, .panel-h, .right, .btn {
     display: none !important;
@@ -890,6 +894,7 @@ textarea{resize:vertical;min-height:62px}
   body {
     background: #fff !important;
     color: #000 !important;
+    margin: 1.2cm !important; /* Memberikan margin bersih pada konten agar tidak menempel di tepi kertas */
   }
 }
 
@@ -897,6 +902,223 @@ textarea{resize:vertical;min-height:62px}
 .page, .page * {
   font-family: "Times New Roman", Times, serif !important;
 }
+
+/* ==========================================
+   TAMPILAN RESPONSIF (MOBILE & TABLET)
+   ========================================== */
+
+/* Menu Hamburger & Slide-over Drawer */
+.menu-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Ubah layout utama shell */
+  .app {
+    display: block !important;
+  }
+  
+  .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+  
+  /* Posisikan sidebar melayang sebagai drawer overlay */
+  .rail {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100 !important;
+    width: 240px !important;
+    max-width: 240px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    transform: translateX(-100%);
+    transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .rail[data-open="true"] {
+    transform: translateX(0);
+  }
+
+  .brand {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .rail-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .rail-label {
+    display: block !important;
+  }
+
+  .nav {
+    display: flex !important;
+    align-items: center !important;
+    gap: 9px !important;
+    padding: 8px !important;
+    border-radius: var(--r) !important;
+    color: #CFE4D6 !important;
+    text-align: left !important;
+    width: 100% !important;
+    font-weight: 500 !important;
+    white-space: normal !important;
+    box-sizing: border-box !important;
+  }
+
+  .whoami {
+    margin-top: auto !important;
+    margin-left: 0 !important;
+    border-top: 1px solid rgba(255,255,255,.14) !important;
+    padding-top: 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .btn-logout {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+  }
+
+  .profile-name {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    width: 100% !important;
+  }
+  
+  /* Latar belakang gelap di belakang laci menu */
+  .menu-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 99;
+    backdrop-filter: blur(2px);
+  }
+  
+  /* Tombol Menu Hamburger */
+  .menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    padding: 8px;
+    margin-right: 12px;
+    cursor: pointer;
+    color: var(--ink);
+    border-radius: var(--r);
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    transition: background 0.1s;
+  }
+  .menu-btn:hover {
+    background: var(--rule-soft);
+  }
+  
+  /* Layout Topbar di Mobile */
+  .topbar {
+    padding: 12px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
+  }
+  .topbar h1 {
+    font-size: 18px !important;
+    margin-bottom: 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+  .topbar .sub {
+    display: none !important; /* Sembunyikan subjudul panjang di topbar mobile */
+  }
+  .topbar .right {
+    margin-left: auto !important;
+  }
+  
+  /* Kurangi padding konten utama */
+  .body {
+    padding: 16px 12px 48px !important;
+  }
+  
+  /* Modal detail pertemuan (SheetModal) melebar penuh di Mobile */
+  .sheet {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  /* Perkecil form modal padding & row */
+  .sheet-h {
+    padding: 12px 16px !important;
+  }
+  .sheet-b {
+    padding: 16px !important;
+  }
+  .sheet-f {
+    padding: 12px 16px !important;
+  }
+
+  /* Wadah pratinjau PDF scrollable di mobile */
+  .pdfbox {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px !important;
+    background: var(--rule-soft) !important;
+  }
+  
+  .page {
+    min-width: 640px !important;
+    margin: 0 auto !important;
+    box-shadow: 0 2px 12px rgba(22,35,61,.14) !important;
+    padding: 26px 28px !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (max-width: 576px) {
+  /* Perkecil padding sel tabel */
+  table.ledger td, table.ledger th {
+    padding: 6px 8px !important;
+    font-size: 11.5px !important;
+  }
+  table.plain td, table.plain th {
+    padding: 8px 10px !important;
+    font-size: 11.5px !important;
+  }
+  
+  /* Kartu grid MK */
+  .grid-mk {
+    grid-template-columns: 1fr !important; /* satu kolom penuh */
+  }
+  
+  /* Dialog login responsif */
+  .login-card {
+    padding: 24px 20px !important;
+    max-width: 100% !important;
+  }
+}
+
 
 
 

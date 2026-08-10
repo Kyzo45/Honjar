@@ -13,7 +13,7 @@ import CetakView from "@/components/views/CetakView";
 import LoginView from "@/components/views/LoginView";
 
 function Shell() {
-  const { view, courses, editing, editingRow, user } = useApp();
+  const { view, courses, editing, editingRow, user, menuOpen, setMenuOpen } = useApp();
 
   // Jika belum login, tampilkan halaman Login
   if (!user) {
@@ -26,6 +26,7 @@ function Shell() {
     <>
       <div className="app">
         <Rail />
+        {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
         <div className="main">
           <Topbar />
           <div className="body">

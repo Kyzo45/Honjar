@@ -91,15 +91,93 @@ export default function CetakView() {
   const { courses } = useApp();
   const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id || 1);
   const [printAll, setPrintAll] = useState(false);
+  const [exporting, setExporting] = useState(false);
   
   const m = courses.find((c) => c.id === selectedCourseId) || courses[0];
 
-  const handlePrintAll = () => {
+  const handleExportSingle = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const element = document.querySelector(".pdfbox");
+      if (!element) return;
+      
+      const pageElement = element.querySelector(".page");
+      if (!pageElement) return;
+
+      const clone = pageElement.cloneNode(true) as HTMLElement;
+      clone.style.boxShadow = "none";
+      clone.style.margin = "0";
+      clone.style.maxWidth = "100%";
+      clone.style.width = "100%";
+      clone.style.minWidth = "initial";
+      clone.style.padding = "0";
+
+      const opt = {
+        margin:       [15, 15, 15, 15],
+        filename:     `Berita_Acara_${m.nama.replace(/\s+/g, "_")}_Kelas_${m.kelas}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2.2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(clone).save();
+    } catch (err) {
+      console.error("Gagal mengunduh PDF:", err);
+      alert("Gagal mengunduh PDF");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportAll = async () => {
+    if (exporting) return;
+    setExporting(true);
     setPrintAll(true);
-    setTimeout(() => {
-      window.print();
-      setPrintAll(false);
-    }, 150);
+    
+    // Tunggu React me-render semua halaman
+    setTimeout(async () => {
+      try {
+        const html2pdf = (await import("html2pdf.js")).default;
+        const element = document.querySelector(".pdfbox");
+        if (!element) return;
+        
+        const clone = element.cloneNode(true) as HTMLElement;
+        clone.style.background = "none";
+        clone.style.padding = "0";
+        clone.style.boxShadow = "none";
+
+        const pages = clone.querySelectorAll(".page");
+        pages.forEach((p: any) => {
+          p.style.boxShadow = "none";
+          p.style.margin = "0";
+          p.style.maxWidth = "100%";
+          p.style.width = "100%";
+          p.style.minWidth = "initial";
+          p.style.padding = "0";
+          p.style.pageBreakAfter = "always";
+          p.style.breakAfter = "page";
+        });
+
+        const opt = {
+          margin:       [15, 15, 15, 15],
+          filename:     `Berita_Acara_Semua_Kelas.pdf`,
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2.2, useCORS: true, logging: false },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak:    { mode: ['css', 'legacy'] }
+        };
+
+        await html2pdf().set(opt).from(clone).save();
+      } catch (err) {
+        console.error("Gagal mengunduh semua PDF:", err);
+        alert("Gagal mengunduh semua PDF");
+      } finally {
+        setPrintAll(false);
+        setExporting(false);
+      }
+    }, 400);
   };
 
   if (!m) {
@@ -136,6 +214,7 @@ export default function CetakView() {
                 color: "var(--ink)",
                 marginRight: "8px"
               }}
+              disabled={exporting}
             >
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -143,8 +222,12 @@ export default function CetakView() {
                 </option>
               ))}
             </select>
-            <button className="btn btn-sm" onClick={handlePrintAll}>Unduh semua kelas</button>
-            <button className="btn btn-sm btn-p" onClick={() => window.print()}>Unduh PDF</button>
+            <button className="btn btn-sm" onClick={handleExportAll} disabled={exporting}>
+              {exporting && printAll ? "Mengunduh..." : "Unduh semua kelas"}
+            </button>
+            <button className="btn btn-sm btn-p" onClick={handleExportSingle} disabled={exporting}>
+              {exporting && !printAll ? "Mengunduh..." : "Unduh PDF"}
+            </button>
           </div>
           <p>Kolom tanda tangan diganti kolom kehadiran dosen, sesuai kesepakatan dengan program studi.</p>
         </div>
