@@ -838,3 +838,65 @@ textarea{resize:vertical;min-height:62px}
   background: #600d35;
 }
 
+@media print {
+  /* Sembunyikan elemen navigasi dan kontrol */
+  .rail, .topbar, .panel-h, .right, .btn {
+    display: none !important;
+  }
+  
+  /* Reset layout utama agar memenuhi halaman */
+  .app {
+    display: block !important;
+  }
+  .main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .body {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  /* Reset wadah pratinjau PDF */
+  .panel {
+    border: none !important;
+    background: none !important;
+    box-shadow: none !important;
+  }
+  .pdfbox {
+    padding: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+  .page {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    page-break-after: always;
+    break-after: page;
+  }
+  .page:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  
+  /* Penyesuaian halaman */
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}
+
+/* Force Times New Roman for PDF preview and printed sheets */
+.page, .page * {
+  font-family: "Times New Roman", Times, serif !important;
+}
+
+
+

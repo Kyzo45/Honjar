@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import CourseFormModal from "@/components/CourseFormModal";
+import type { MataKuliah } from "@/lib/types";
 
 export default function MasterView() {
-  const { courses, addCourse, lecturers, addLecturer } = useApp();
+  const { courses, addCourse, updateCourse, lecturers, addLecturer, deleteLecturer } = useApp();
   const [showForm, setShowForm] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<MataKuliah | null>(null);
   const [newLecName, setNewLecName] = useState("");
 
   const handleAddLecturer = (e: React.FormEvent) => {
@@ -62,7 +64,9 @@ export default function MasterView() {
                     {m.dosen.map((d, i) => <span key={d}>{i > 0 && <br />}{d}</span>)}
                   </td>
                   <td>{m.pj}</td>
-                  <td style={{ textAlign: "right" }}><button className="btn btn-sm">Ubah</button></td>
+                  <td style={{ textAlign: "right" }}>
+                    <button className="btn btn-sm" onClick={() => setEditingCourse(m)}>Ubah</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -94,8 +98,29 @@ export default function MasterView() {
           </form>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
             {lecturers.map((lec) => (
-              <span key={lec} className="tag t-done" style={{ padding: "6px 12px", fontSize: "12px" }}>
+              <span key={lec} className="tag t-done" style={{ padding: "6px 12px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
                 {lec}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`Apakah Anda yakin ingin menghapus dosen "${lec}"?`)) {
+                      deleteLecturer(lec);
+                    }
+                  }}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    color: "var(--rose)",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    padding: "0 2px",
+                    display: "inline-flex",
+                    alignItems: "center"
+                  }}
+                  title="Hapus Dosen"
+                >
+                  ✕
+                </button>
               </span>
             ))}
           </div>
@@ -106,6 +131,14 @@ export default function MasterView() {
         <CourseFormModal
           onClose={() => setShowForm(false)}
           onSubmit={(input) => { addCourse(input); setShowForm(false); }}
+        />
+      )}
+
+      {editingCourse && (
+        <CourseFormModal
+          course={editingCourse}
+          onClose={() => setEditingCourse(null)}
+          onSubmit={(input) => { updateCourse(editingCourse.id, input); setEditingCourse(null); }}
         />
       )}
     </section>

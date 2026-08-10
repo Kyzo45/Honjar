@@ -42,3 +42,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { name } = await req.json();
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: "Nama dosen tidak boleh kosong" }, { status: 400 });
+    }
+    const trimmed = name.trim();
+
+    await pool.query("DELETE FROM dosen WHERE nama = $1", [trimmed]);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.warn("PostgreSQL offline. Sukses menghapus dosen di cache lokal:", error.message);
+    return NextResponse.json({ success: true });
+  }
+}

@@ -1,30 +1,31 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { NewCourseInput } from "@/lib/types";
+import type { MataKuliah, NewCourseInput } from "@/lib/types";
 
 interface Props {
   onClose: () => void;
   onSubmit: (input: NewCourseInput) => void;
+  course?: MataKuliah;
 }
 
-export default function CourseFormModal({ onClose, onSubmit }: Props) {
-  const [kode, setKode] = useState("");
-  const [nama, setNama] = useState("");
-  const [sks, setSks] = useState("");
-  const [kelas, setKelas] = useState("");
-  const [mhs, setMhs] = useState("");
-  const [koor, setKoor] = useState("");
-  const [dosenText, setDosenText] = useState("");
-  const [pj, setPj] = useState("");
+export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
+  const [kode, setKode] = useState(course?.kode || "");
+  const [nama, setNama] = useState(course?.nama || "");
+  const [sks, setSks] = useState(course?.sks || "");
+  const [kelas, setKelas] = useState(course?.kelas || "");
+  const [mhs, setMhs] = useState(course?.mhs ? course.mhs.toString() : "");
+  const [koor, setKoor] = useState(course?.koor || "");
+  const [dosenText, setDosenText] = useState(course?.dosen.join(", ") || "");
+  const [pj, setPj] = useState(course?.pj || "");
   
   // New Fields
-  const [tipe, setTipe] = useState<"Teori" | "Praktikum">("Teori");
-  const [semester, setSemester] = useState("2");
-  const [hari, setHari] = useState("Senin");
-  const [jamMulai, setJamMulai] = useState("07:00");
-  const [jamSelesai, setJamSelesai] = useState("08:40");
-  const [ruangan, setRuangan] = useState("R.301");
+  const [tipe, setTipe] = useState<"Teori" | "Praktikum">(course?.tipe || "Teori");
+  const [semester, setSemester] = useState(course?.semester ? course.semester.toString() : "2");
+  const [hari, setHari] = useState(course?.hari || "Senin");
+  const [jamMulai, setJamMulai] = useState(course?.jamMulai || "07:00");
+  const [jamSelesai, setJamSelesai] = useState(course?.jamSelesai || "08:40");
+  const [ruangan, setRuangan] = useState(course?.ruangan || "R.301");
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const kodeRef = useRef<HTMLInputElement>(null);
@@ -78,10 +79,10 @@ export default function CourseFormModal({ onClose, onSubmit }: Props) {
     <div className="scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
         <div className="sheet-h">
-          <span className="step">Baru</span>
+          <span className="step">{course ? "Ubah" : "Baru"}</span>
           <div>
-            <h2 id="cfTitle">Tambah mata kuliah</h2>
-            <p>Dibuat sebagai berita acara kosong, siap diisi PJ terkait.</p>
+            <h2 id="cfTitle">{course ? "Ubah mata kuliah" : "Tambah mata kuliah"}</h2>
+            <p>{course ? "Perbarui informasi jadwal, pengajar, atau PJ." : "Dibuat sebagai berita acara kosong, siap diisi PJ terkait."}</p>
           </div>
           <button className="iconbtn" aria-label="Tutup" onClick={onClose}>✕</button>
         </div>
@@ -183,9 +184,9 @@ export default function CourseFormModal({ onClose, onSubmit }: Props) {
         </div>
 
         <div className="sheet-f">
-          <span className="hint">Berita acara 16 pertemuan dibuat otomatis, kosong.</span>
+          <span className="hint">{course ? "Perubahan langsung memengaruhi rekapitulasi." : "Berita acara 16 pertemuan dibuat otomatis, kosong."}</span>
           <button className="btn" onClick={onClose}>Batal</button>
-          <button className="btn btn-p" onClick={handleSubmit}>Simpan mata kuliah</button>
+          <button className="btn btn-p" onClick={handleSubmit}>{course ? "Simpan Perubahan" : "Simpan mata kuliah"}</button>
         </div>
       </div>
     </div>

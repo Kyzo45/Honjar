@@ -21,7 +21,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Honjar — Berita Acara Kuliah",
+  title: "Honjar - Berita Acara Kuliah",
   description: "Sistem berita acara kuliah TLM D4",
 };
 

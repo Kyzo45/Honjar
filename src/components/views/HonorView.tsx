@@ -68,6 +68,34 @@ export default function HonorView() {
     );
   });
 
+  const handleDownloadExcel = async () => {
+    try {
+      const res = await fetch("/api/honor/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month: selectedMonth,
+          monthName: MONTH_NAMES[selectedMonth]
+        })
+      });
+      if (!res.ok) throw new Error("Gagal mengunduh berkas");
+      
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      
+      const monthLabel = selectedMonth === "all" ? "Semua-Bulan" : `Bulan-${selectedMonth}`;
+      link.setAttribute("download", `Rekap_Honor_Mengajar_${monthLabel}_2026.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Gagal mengunduh rekap honor Excel:", err);
+      alert("Gagal mengunduh rekap honor Excel.");
+    }
+  };
+
   return (
     <section className="view">
       <div className="cards">
@@ -100,7 +128,7 @@ export default function HonorView() {
               <option value="05">Mei 2026</option>
             </select>
             <button className="btn btn-sm">Kunci periode</button>
-            <button className="btn btn-sm btn-p">Unduh XLSX</button>
+            <button className="btn btn-sm btn-p" onClick={handleDownloadExcel}>Unduh XLSX</button>
           </div>
           <p>Disusun dari berita acara yang sudah diisi. Tidak ada angka yang diketik ulang di halaman ini.</p>
         </div>

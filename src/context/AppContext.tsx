@@ -28,7 +28,9 @@ interface AppState {
   closeSheet: () => void;
   saveRow: (courseId: number, ke: number, patch: Partial<KuliahRow>) => void;
   addCourse: (input: NewCourseInput) => void;
+  updateCourse: (id: number, input: NewCourseInput) => void;
   addLecturer: (name: string) => void;
+  deleteLecturer: (name: string) => void;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
@@ -171,6 +173,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // 3b. Ubah MK ke Database
+  const updateCourse = async (id: number, input: NewCourseInput) => {
+    // Optimistic Update
+    setCourses((prev) =>
+      prev.map((c) =>
+        c.id !== id
+          ? c
+          : {
+              ...c,
+              kode: input.kode,
+              nama: input.nama,
+              kelas: input.kelas,
+              sks: input.sks,
+              koor: input.koor,
+              dosen: input.dosenText.split(",").map((s) => s.trim()).filter(Boolean),
+              mhs: input.mhs,
+              pj: input.pj,
+              tipe: input.tipe,
+              semester: input.semester,
+              hari: input.hari,
+              jamMulai: input.jamMulai,
+              jamSelesai: input.jamSelesai,
+              ruangan: input.ruangan,
+            }
+      )
+    );
+
+    try {
+      const res = await fetch("/api/courses", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...input })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const fresh = await fetch("/api/courses").then((r) => r.json());
+        if (Array.isArray(fresh)) setCourses(fresh);
+      }
+    } catch (err) {
+      console.error("Gagal memperbarui mata kuliah:", err);
+    }
+  };
+
   // 4. Tambah Dosen ke Database
   const addLecturer = async (name: string) => {
     const trimmed = name.trim();
@@ -188,6 +233,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       console.error("Gagal menambahkan dosen:", err);
+    }
+  };
+
+  // 4b. Hapus Dosen dari Database
+  const deleteLecturer = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    try {
+      const res = await fetch("/api/lecturers", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLecturers((prev) => prev.filter((l) => l !== trimmed));
+        const freshCourses = await fetch("/api/courses").then((r) => r.json());
+        if (Array.isArray(freshCourses)) setCourses(freshCourses);
+      }
+    } catch (err) {
+      console.error("Gagal menghapus dosen:", err);
     }
   };
 
@@ -244,7 +310,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppState = {
     role, view, courses, curMK, title, sub,
     editing, editingRow, lecturers, loading, user,
-    setRole, go, selectCourse, openSheet, closeSheet, saveRow, addCourse, addLecturer,
+    setRole, go, selectCourse, openSheet, closeSheet, saveRow, addCourse, updateCourse, addLecturer, deleteLecturer,
     login, logout
   };
 
