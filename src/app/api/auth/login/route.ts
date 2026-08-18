@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
+import { verifyPassword } from "@/lib/auth";
 
 export async function POST(req: Request) {
   const { username, password } = await req.json();
@@ -7,11 +8,14 @@ export async function POST(req: Request) {
   if (!username) {
     return NextResponse.json({ error: "Username tidak boleh kosong" }, { status: 400 });
   }
+  if (!password) {
+    return NextResponse.json({ error: "Password tidak boleh kosong" }, { status: 400 });
+  }
 
   try {
     // Ambil data user dari PostgreSQL
     const { rows } = await pool.query(
-      `SELECT id, username, nama, role FROM users WHERE LOWER(username) = LOWER($1)`,
+      `SELECT id, username, nama, role, password_hash FROM users WHERE LOWER(username) = LOWER($1)`,
       [username.trim()]
     );
 
@@ -29,8 +33,8 @@ export async function POST(req: Request) {
       );
     }
 
-    if (password !== "123456" && password !== "admin") {
-      return NextResponse.json({ error: "Password salah (Gunakan: 123456)" }, { status: 401 });
+    if (!verifyPassword(password, user.password_hash)) {
+      return NextResponse.json({ error: "Password salah" }, { status: 401 });
     }
 
     return NextResponse.json({

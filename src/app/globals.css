@@ -185,6 +185,11 @@ tr.exam td{
 .panel-h h2{margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
 .panel-h .right{margin-left:auto;display:flex;gap:8px}
 .panel-h p{margin:2px 0 0;font-size:12px;color:var(--ink-2);flex-basis:100%}
+.panel-toggle{
+  display:flex;align-items:center;gap:8px;background:none;border:none;padding:0;
+  cursor:pointer;color:inherit;font:inherit;text-align:left;
+}
+.panel-chevron{display:inline-block;font-size:11px;color:var(--ink-3);transition:transform .15s ease;flex-shrink:0}
 table.plain{width:100%;border-collapse:collapse}
 table.plain th{
   text-align:left;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
@@ -198,6 +203,16 @@ table.plain tr.group td{
   border-bottom:1px solid var(--rule);border-top:1px solid var(--rule);
 }
 table.plain tr.group td span{font-weight:400;color:var(--ink-2);font-family:var(--mono);font-size:11.5px;float:right}
+
+/* tabel daftar presensi (Daftar Kelas) */
+.att-table th,.att-table td{padding:8px 10px}
+.att-cell{text-align:center;font-weight:700;font-size:12.5px;font-family:var(--mono)}
+.att-cell a{color:inherit;text-decoration:none}
+.att-cell a:hover{text-decoration:underline}
+.att-hadir{color:var(--verd)}
+.att-izin{color:var(--amber)}
+.att-tanpa{color:var(--rose)}
+.att-none{color:var(--ink-3);font-weight:400}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:18px}
 .stat{background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);padding:14px}
 .stat dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
@@ -337,11 +352,52 @@ textarea{resize:vertical;min-height:62px}
 .absent-row .rm{color:var(--ink-3);font-size:16px;line-height:1;padding:4px}
 .absent-row .rm:hover{color:var(--rose)}
 
+/* toast notifikasi CRUD */
+.toast-stack{
+  position:fixed;right:18px;bottom:18px;z-index:1000;
+  display:flex;flex-direction:column;gap:8px;
+  max-width:360px;
+}
+.toast{
+  display:flex;align-items:flex-start;gap:10px;
+  background:var(--panel);border:1px solid var(--rule);border-radius:var(--r);
+  box-shadow:var(--shadow);padding:11px 12px;font-size:12.5px;color:var(--ink);
+  animation:toast-in .18s ease-out;
+}
+@keyframes toast-in{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.toast-icon{
+  font-style:normal;flex-shrink:0;width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;
+  margin-top:1px;
+}
+.toast-success .toast-icon{background:var(--verd-soft);color:var(--verd)}
+.toast-error .toast-icon{background:var(--rose-soft);color:var(--rose)}
+.toast-success{border-color:var(--stamp-line)}
+.toast-error{border-color:#EBC3C6}
+.toast-msg{flex:1;line-height:1.45}
+.toast-close{
+  flex-shrink:0;border:none;background:none;color:var(--ink-3);cursor:pointer;
+  font-size:11px;padding:2px;line-height:1;
+}
+.toast-close:hover{color:var(--ink)}
+
+@media (max-width:576px){
+  .toast-stack{left:12px;right:12px;bottom:12px;max-width:none}
+}
+
 /* pdf preview */
 .pdfbox{background:var(--rule-soft);padding:22px;display:flex;justify-content:center}
 .page{
   background:#fff;width:100%;max-width:640px;padding:26px 28px;
   box-shadow:0 2px 12px rgba(22,35,61,.14);font-size:11px;
+  /* Rasio area konten A4 (210x297mm dikurangi margin cetak 15mm tiap sisi di
+     opsi html2pdf) supaya tabel pertemuan meregang mengisi satu halaman penuh,
+     bukan menyisakan banyak ruang kosong di bawah seperti sebelumnya. */
+  aspect-ratio: 180 / 267;
+  display:flex;flex-direction:column;box-sizing:border-box;
 }
 .page-kop {
   display: flex;
@@ -374,8 +430,9 @@ textarea{resize:vertical;min-height:62px}
   color: var(--ink-2);
   margin-top: 3px;
 }
-.page h4{text-align:center;margin:0 0 12px;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
-.page table{width:100%;border-collapse:collapse;font-size:9.5px}
+.page h4{text-align:center;margin:0 0 12px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;flex-shrink:0}
+.page-kop,.page-meta{flex-shrink:0}
+.page table{width:100%;border-collapse:collapse;font-size:9.5px;flex:1;min-height:0}
 .page th,.page td{border:1px solid #8B93A4;padding:4px 5px;text-align:left;vertical-align:top}
 .page th{background:#F2F0EA;font-size:8.5px;text-transform:uppercase;letter-spacing:.04em}
 .page .cek{text-align:center;color:var(--verd);font-weight:700}

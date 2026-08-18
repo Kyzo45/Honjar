@@ -29,7 +29,7 @@ export default function LoginView() {
   };
 
   const handleQuickLogin = async (user: string) => {
-    const pwd = user === "admin" ? "admin" : "123456";
+    const pwd = user === "admin" ? "123456" : "123456";
     setUsername(user);
     setPassword(pwd);
     setError(null);
@@ -94,8 +94,8 @@ export default function LoginView() {
             <button onClick={() => handleQuickLogin("admin")} className="btn-demo admin">
               <span>Admin</span> admin
             </button>
-            <button onClick={() => handleQuickLogin("rifqi.aulia")} className="btn-demo pj">
-              <span>PJ Kelas</span> rifqi.aulia
+            <button onClick={() => handleQuickLogin("2350081023")} className="btn-demo pj">
+              <span>PJ Kelas</span> 2350081023
             </button>
           </div>
         </div>

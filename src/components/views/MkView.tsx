@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import type { MataKuliah } from "@/lib/types";
 
@@ -55,23 +56,68 @@ function CourseCard({ m }: { m: MataKuliah }) {
 }
 
 export default function MkView() {
-  const { courses } = useApp();
+  const { courses, semesterFilter } = useApp();
   const total = courses.reduce((sum, m) => sum + courseIsi(m), 0);
   const totalSks = courses.reduce((sum, m) => sum + (parseInt(m.sks) || 0), 0);
+  const belumDiisi = courses.reduce(
+    (sum, m) => sum + m.rows.filter((r) => r.tipe === "kuliah" && !r.topik).length,
+    0
+  );
+  const [query, setQuery] = useState("");
+
+  const filteredCourses = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return courses.filter((m) => {
+      if (semesterFilter !== "all" && m.semester !== semesterFilter) return false;
+      if (!q) return true;
+      return (
+        m.kode.toLowerCase().includes(q) ||
+        m.nama.toLowerCase().includes(q) ||
+        m.kelas.toLowerCase().includes(q) ||
+        m.koor.toLowerCase().includes(q) ||
+        m.dosen.some((d) => d.toLowerCase().includes(q))
+      );
+    });
+  }, [courses, query, semesterFilter]);
 
   return (
     <section className="view">
       <div className="cards">
         <div className="stat"><dt>Pertemuan tercatat</dt><dd>{total}<small>/{courses.length * 14}</small></dd></div>
-        <div className="stat"><dt>Belum diisi minggu ini</dt><dd>2</dd></div>
+        <div className="stat"><dt>Pertemuan belum diisi</dt><dd>{belumDiisi}</dd></div>
         <div className="stat"><dt>Total SKS diampu</dt><dd>{totalSks}<small> SKS</small></dd></div>
         <div className="stat"><dt>Batas input mundur</dt><dd>7<small> hari</small></dd></div>
       </div>
-      <p className="eyebrow">Kelas yang Anda pegang</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+        <p className="eyebrow" style={{ margin: 0 }}>Kelas yang Anda pegang</p>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="🔍 Cari kode, nama, kelas, dosen..."
+          style={{
+            padding: "6px 10px",
+            fontSize: "12.5px",
+            borderRadius: "var(--r)",
+            border: "1px solid var(--rule)",
+            background: "var(--paper)",
+            minWidth: "220px"
+          }}
+        />
+      </div>
       <div className="grid-mk">
-        {courses.map((m) => (
+        {filteredCourses.map((m) => (
           <CourseCard key={m.id} m={m} />
         ))}
+        {filteredCourses.length === 0 && (
+          <p style={{ color: "var(--ink-3)", padding: "24px 0" }}>
+            {courses.length === 0
+              ? "Belum ada mata kuliah."
+              : query
+                ? `Tidak ada mata kuliah yang cocok dengan "${query}".`
+                : "Tidak ada mata kuliah pada semester ini."}
+          </p>
+        )}
       </div>
     </section>
   );

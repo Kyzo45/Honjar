@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# berkas bukti sakit/izin yang diunggah PJ — data pengguna, jangan ikut ke-commit
+/public/uploads/bukti/*
+!/public/uploads/bukti/.gitkeep
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

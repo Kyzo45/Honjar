@@ -19,18 +19,52 @@ function formatDate(date: any): string | undefined {
   return `${year}-${month}-${day}`;
 }
 
+function validateJadwal(jamMulai: string, jamSelesai: string): string | null {
+  if (!jamMulai || !jamSelesai) return "Jam mulai dan jam selesai wajib diisi";
+  if (jamSelesai <= jamMulai) return "Jam selesai harus setelah jam mulai";
+  return null;
+}
+
+// Terima pjId baik sebagai number maupun string angka (mis. "5") — jangan diam-diam
+// menganggap "tidak ada PJ" hanya karena tipe datanya bukan number murni.
+function resolvePjId(pjId: unknown): number | null {
+  if (pjId === null || pjId === undefined || pjId === "") return null;
+  const n = Number(pjId);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Cari dosen berdasarkan nama persis, atau buat baru dengan NID otomatis jika belum ada.
+// Dipakai sebagai fallback saja — normalnya dosen sudah dipilih dari daftar dosen yang ada.
+async function resolveDosenId(client: { query: (q: string, p?: any[]) => Promise<any> }, nama: string): Promise<number> {
+  const { rows: existing } = await client.query("SELECT id FROM dosen WHERE nama = $1", [nama]);
+  if (existing[0]) return existing[0].id;
+
+  const { rows: seq } = await client.query("SELECT nextval(pg_get_serial_sequence('dosen', 'id')) AS id");
+  const newId = Number(seq[0].id);
+  const nid = "DSN" + String(newId).padStart(4, "0");
+  const { rows: inserted } = await client.query(
+    "INSERT INTO dosen (id, nid, nama) VALUES ($1, $2, $3) RETURNING id",
+    [newId, nid, nama]
+  );
+  return inserted[0].id;
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const nim = searchParams.get("nim");
+    const pjIdParam = searchParams.get("pjId");
 
-    // 1. Ambil mata kuliah (filter by nim jika ada)
+    // 1. Ambil mata kuliah (filter by nim atau pjId jika ada)
     let coursesList: any[] = [];
     if (nim) {
       const { rows } = await pool.query(
         "SELECT mk.* FROM mata_kuliah mk JOIN krs k ON mk.id = k.mata_kuliah_id WHERE k.mahasiswa_nim = $1",
         [nim]
       );
+      coursesList = rows;
+    } else if (pjIdParam) {
+      const { rows } = await pool.query("SELECT * FROM mata_kuliah WHERE pj_id = $1", [Number(pjIdParam)]);
       coursesList = rows;
     } else {
       const { rows } = await pool.query("SELECT * FROM mata_kuliah");
@@ -50,13 +84,19 @@ export async function GET(req: Request) {
       // 3. Ambil nama PJ
       const { rows: pjRows } = await pool.query("SELECT nama FROM users WHERE id = $1", [c.pj_id]);
       const pj = pjRows[0]?.nama || "—";
+      const pjId: number | null = c.pj_id ?? null;
 
-      // 4. Hitung jumlah mahasiswa di KRS
-      const { rows: krsCountRows } = await pool.query(
-        "SELECT COUNT(*) as count FROM krs WHERE mata_kuliah_id = $1",
+      // 4. Ambil roster peserta (lewat KRS) — satu mahasiswa bisa muncul di roster
+      // banyak mata kuliah, jadi ini query langsung per mata kuliah, bukan lewat
+      // pencocokan field kelas manapun.
+      const { rows: rosterRows } = await pool.query(
+        `SELECT m.nim, m.nama, m.angkatan FROM mahasiswa m
+         JOIN krs k ON k.mahasiswa_nim = m.nim
+         WHERE k.mata_kuliah_id = $1 ORDER BY m.nama ASC`,
         [c.id]
       );
-      const mhs = Number(krsCountRows[0]?.count || 0);
+      const roster = rosterRows.map((r: any) => ({ nim: r.nim, nama: r.nama, angkatan: r.angkatan || "" }));
+      const mhs = roster.length;
 
       // 5. Ambil daftar pertemuan (rows)
       const { rows: pList } = await pool.query(
@@ -76,13 +116,14 @@ export async function GET(req: Request) {
           let absents: AbsentRecord[] = [];
           if (p.topik) {
             const { rows: absentRows } = await pool.query(
-              'SELECT mahasiswa_nim as nim, status, file_bukti as "fileName" FROM kehadiran_mahasiswa WHERE pertemuan_id = $1 AND status != \'hadir\'',
+              'SELECT mahasiswa_nim as nim, status, file_bukti as "fileUrl", file_nama_asli as "fileName" FROM kehadiran_mahasiswa WHERE pertemuan_id = $1 AND status != \'hadir\'',
               [p.id]
             );
             absents = absentRows.map((r: any) => ({
               nim: r.nim,
               status: r.status,
               fileName: r.fileName || undefined,
+              fileUrl: r.fileUrl || undefined,
             }));
           }
 
@@ -113,13 +154,15 @@ export async function GET(req: Request) {
         koor: c.koordinator,
         dosen,
         mhs,
+        roster,
         pj,
+        pjId,
         rows,
         tipe: c.tipe as "Teori" | "Praktikum",
         semester: c.semester,
         hari: c.hari,
-        jamMulai: c.jam_mulai.slice(0, 5),
-        jamSelesai: c.jam_selesai.slice(0, 5),
+        jamMulai: c.jam_mulai ? c.jam_mulai.slice(0, 5) : "—",
+        jamSelesai: c.jam_selesai ? c.jam_selesai.slice(0, 5) : "—",
         ruangan: c.ruangan,
       });
     }
@@ -131,155 +174,206 @@ export async function GET(req: Request) {
   }
 }
 
+// Mahasiswa awal yang diinput manual/diimpor lewat form mata kuliah saat course-nya
+// baru dibuat. Ditulis ke tabel mahasiswa (kalau NIM belum ada) lalu langsung
+// didaftarkan ke KRS mata kuliah ini — tidak menyentuh mata kuliah lain manapun.
+async function insertNewRoster(
+  client: { query: (q: string, p?: any[]) => Promise<any> },
+  newRoster: { nim: string; nama: string; angkatan: string }[] | undefined,
+  courseId: number
+) {
+  if (!Array.isArray(newRoster)) return;
+  for (const m of newRoster) {
+    const nim = (m.nim || "").toString().trim();
+    const nama = (m.nama || "").toString().trim();
+    const angkatan = (m.angkatan || "").toString().trim();
+    if (!nim || !nama) continue;
+    await client.query(
+      `INSERT INTO mahasiswa (nim, nama, angkatan) VALUES ($1, $2, $3)
+       ON CONFLICT (nim) DO UPDATE SET nama = EXCLUDED.nama, angkatan = EXCLUDED.angkatan`,
+      [nim, nama, angkatan || null]
+    );
+    await client.query(
+      "INSERT INTO krs (mahasiswa_nim, mata_kuliah_id) VALUES ($1, $2) ON CONFLICT (mahasiswa_nim, mata_kuliah_id) DO NOTHING",
+      [nim, courseId]
+    );
+  }
+}
+
 export async function POST(req: Request) {
+  const body = await req.json();
+  const { kode, nama, kelas, sks, koor, dosen, pjId, tipe, semester, hari, jamMulai, jamSelesai, ruangan, newRoster } = body;
+  const dosenNames: string[] = Array.isArray(dosen)
+    ? dosen.map((s: string) => s.trim()).filter(Boolean)
+    : [];
+
+  const jadwalError = validateJadwal(jamMulai, jamSelesai);
+  if (jadwalError) {
+    return NextResponse.json({ error: jadwalError }, { status: 400 });
+  }
+
+  let client;
   try {
-    const body = await req.json();
-    const { kode, nama, kelas, sks, koor, dosenText, pj, tipe, semester, hari, jamMulai, jamSelesai, ruangan } = body;
+    client = await pool.connect();
+  } catch (connErr: any) {
+    console.warn("PostgreSQL offline. Menambahkan ke data mock secara lokal:", connErr.message);
+    return NextResponse.json({ success: true, id: Date.now() });
+  }
 
-    // 1. Dapatkan pj_id
-    const { rows: userRows } = await pool.query("SELECT id FROM users WHERE nama = $1 OR username = $2", [pj, pj]);
-    let pj_id = userRows[0]?.id || null;
+  try {
+    await client.query("BEGIN");
 
-    if (!pj_id) {
-      // Jika PJ tidak ada, kaitkan ke user default / PJ Rifqi
-      const { rows: defaultUser } = await pool.query("SELECT id FROM users WHERE role = 'pj' LIMIT 1");
-      pj_id = defaultUser[0]?.id || 2;
-    }
+    // 1. PJ dipilih langsung dari daftar Penanggung Jawab (pjId), boleh kosong (belum ditentukan)
+    const pj_id: number | null = resolvePjId(pjId);
 
     // 2. Simpan mata kuliah
-    const { rows: insResult } = await pool.query(
-      `INSERT INTO mata_kuliah 
-      (kode, nama, sks, kelas, semester, tipe, hari, jam_mulai, jam_selesai, ruangan, koordinator, pj_id) 
+    const { rows: insResult } = await client.query(
+      `INSERT INTO mata_kuliah
+      (kode, nama, sks, kelas, semester, tipe, hari, jam_mulai, jam_selesai, ruangan, koordinator, pj_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
       [kode, nama, sks, kelas, Number(semester), tipe, hari, jamMulai, jamSelesai, ruangan, koor, pj_id]
     );
     const newCourseId = insResult[0].id;
 
     // 3. Simpan dosen pengampu (many to many)
-    const dosenNames = dosenText.split(",").map((s: string) => s.trim()).filter(Boolean);
     for (const dName of dosenNames) {
-      // Dapatkan atau buat dosen
-      const { rows: dosenRows } = await pool.query("SELECT id FROM dosen WHERE nama = $1", [dName]);
-      let dosenId = dosenRows[0]?.id;
-      if (!dosenId) {
-        const { rows: insDosen } = await pool.query("INSERT INTO dosen (nama) VALUES ($1) RETURNING id", [dName]);
-        dosenId = insDosen[0].id;
-      }
-      await pool.query("INSERT INTO dosen_mata_kuliah (mata_kuliah_id, dosen_id) VALUES ($1, $2)", [
+      const dosenId = await resolveDosenId(client, dName);
+      await client.query("INSERT INTO dosen_mata_kuliah (mata_kuliah_id, dosen_id) VALUES ($1, $2)", [
         newCourseId,
         dosenId,
       ]);
     }
 
-    // 4. Masukkan mahasiswa kelas ke KRS secara otomatis
-    const { rows: students } = await pool.query("SELECT nim FROM mahasiswa WHERE kelas = $1", [kelas]);
-    for (const student of students) {
-      await pool.query("INSERT INTO krs (mahasiswa_nim, mata_kuliah_id) VALUES ($1, $2)", [
-        student.nim,
-        newCourseId,
-      ]);
-    }
+    // 4. Simpan roster awal (input manual/impor Excel dari form ini) langsung ke KRS
+    // mata kuliah yang baru dibuat ini
+    await insertNewRoster(client, newRoster, newCourseId);
 
     // 5. Buat 16 pertemuan kosong
     for (let i = 1; i <= 16; i++) {
       const pTipe = i === 8 ? "uts" : i === 16 ? "uas" : "kuliah";
-      await pool.query("INSERT INTO pertemuan (mata_kuliah_id, ke, tipe) VALUES ($1, $2, $3)", [
+      await client.query("INSERT INTO pertemuan (mata_kuliah_id, ke, tipe) VALUES ($1, $2, $3)", [
         newCourseId,
         i,
         pTipe,
       ]);
     }
 
+    await client.query("COMMIT");
     return NextResponse.json({ success: true, id: newCourseId });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Menambahkan ke data mock secara lokal:", error.message);
-    return NextResponse.json({ success: true, id: Date.now() });
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("Gagal menambahkan mata kuliah:", error);
+    return NextResponse.json({ error: "Gagal menyimpan mata kuliah: " + error.message }, { status: 500 });
+  } finally {
+    client.release();
   }
 }
 
 export async function PUT(req: Request) {
+  const body = await req.json();
+  const {
+    id,
+    kode,
+    nama,
+    kelas,
+    sks,
+    koor,
+    dosen,
+    pjId,
+    tipe,
+    semester,
+    hari,
+    jamMulai,
+    jamSelesai,
+    ruangan,
+  } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: "id wajib disertakan untuk mengubah mata kuliah" }, { status: 400 });
+  }
+
+  const jadwalError = validateJadwal(jamMulai, jamSelesai);
+  if (jadwalError) {
+    return NextResponse.json({ error: jadwalError }, { status: 400 });
+  }
+
+  const dosenNames: string[] = Array.isArray(dosen)
+    ? dosen.map((s: string) => s.trim()).filter(Boolean)
+    : [];
+
+  let client;
   try {
-    const body = await req.json();
-    const {
-      id,
-      kode,
-      nama,
-      kelas,
-      sks,
-      koor,
-      dosenText,
-      pj,
-      tipe,
-      semester,
-      hari,
-      jamMulai,
-      jamSelesai,
-      ruangan,
-    } = body;
+    client = await pool.connect();
+  } catch (connErr: any) {
+    console.warn("PostgreSQL offline. Mengubah data mock secara lokal:", connErr.message);
+    return NextResponse.json({ success: true });
+  }
 
-    if (!id) {
-      return NextResponse.json({ error: "id wajib disertakan untuk mengubah mata kuliah" }, { status: 400 });
-    }
+  try {
+    await client.query("BEGIN");
 
-    // 1. Dapatkan pj_id
-    const { rows: userRows } = await pool.query("SELECT id FROM users WHERE nama = $1 OR username = $2", [pj, pj]);
-    let pj_id = userRows[0]?.id || null;
-
-    if (!pj_id) {
-      const { rows: defaultUser } = await pool.query("SELECT id FROM users WHERE role = 'pj' LIMIT 1");
-      pj_id = defaultUser[0]?.id || 2;
-    }
+    // 1. PJ dipilih langsung dari daftar Penanggung Jawab (pjId), boleh kosong (belum ditentukan)
+    const pj_id: number | null = resolvePjId(pjId);
 
     // 2. Update mata kuliah
-    await pool.query(
-      `UPDATE mata_kuliah SET 
-        kode = $1, 
-        nama = $2, 
-        sks = $3, 
-        kelas = $4, 
-        semester = $5, 
-        tipe = $6, 
-        hari = $7, 
-        jam_mulai = $8, 
-        jam_selesai = $9, 
-        ruangan = $10, 
-        koordinator = $11, 
-        pj_id = $12 
+    await client.query(
+      `UPDATE mata_kuliah SET
+        kode = $1,
+        nama = $2,
+        sks = $3,
+        kelas = $4,
+        semester = $5,
+        tipe = $6,
+        hari = $7,
+        jam_mulai = $8,
+        jam_selesai = $9,
+        ruangan = $10,
+        koordinator = $11,
+        pj_id = $12
       WHERE id = $13`,
       [kode, nama, sks, kelas, Number(semester), tipe, hari, jamMulai, jamSelesai, ruangan, koor, pj_id, id]
     );
 
     // 3. Update dosen pengampu (many to many)
-    await pool.query("DELETE FROM dosen_mata_kuliah WHERE mata_kuliah_id = $1", [id]);
+    await client.query("DELETE FROM dosen_mata_kuliah WHERE mata_kuliah_id = $1", [id]);
 
-    const dosenNames = dosenText.split(",").map((s: string) => s.trim()).filter(Boolean);
     for (const dName of dosenNames) {
-      // Dapatkan atau buat dosen
-      const { rows: dosenRows } = await pool.query("SELECT id FROM dosen WHERE nama = $1", [dName]);
-      let dosenId = dosenRows[0]?.id;
-      if (!dosenId) {
-        const { rows: insDosen } = await pool.query("INSERT INTO dosen (nama) VALUES ($1) RETURNING id", [dName]);
-        dosenId = insDosen[0].id;
-      }
-      await pool.query("INSERT INTO dosen_mata_kuliah (mata_kuliah_id, dosen_id) VALUES ($1, $2)", [
+      const dosenId = await resolveDosenId(client, dName);
+      await client.query("INSERT INTO dosen_mata_kuliah (mata_kuliah_id, dosen_id) VALUES ($1, $2)", [
         id,
         dosenId,
       ]);
     }
 
-    // 4. Sinkronkan ulang KRS mahasiswa
-    await pool.query("DELETE FROM krs WHERE mata_kuliah_id = $1", [id]);
-    const { rows: students } = await pool.query("SELECT nim FROM mahasiswa WHERE kelas = $1", [kelas]);
-    for (const student of students) {
-      await pool.query("INSERT INTO krs (mahasiswa_nim, mata_kuliah_id) VALUES ($1, $2)", [
-        student.nim,
-        id,
-      ]);
-    }
+    // Catatan: roster peserta (KRS) sengaja tidak disentuh di sini. Roster dikelola
+    // langsung lewat /api/courses/roster (menu Daftar Kelas), tidak lagi disusun
+    // ulang otomatis tiap mata kuliah diedit.
 
+    await client.query("COMMIT");
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Mengubah data mock secara lokal:", error.message);
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("Gagal mengubah mata kuliah:", error);
+    return NextResponse.json({ error: "Gagal menyimpan perubahan: " + error.message }, { status: 500 });
+  } finally {
+    client.release();
+  }
+}
+
+export async function DELETE(req: Request) {
+  const body = await req.json();
+  const { id } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: "id wajib disertakan untuk menghapus mata kuliah" }, { status: 400 });
+  }
+
+  try {
+    // pertemuan, krs, dosen_mata_kuliah, dan kehadiran_mahasiswa ikut terhapus otomatis (ON DELETE CASCADE)
+    await pool.query("DELETE FROM mata_kuliah WHERE id = $1", [id]);
     return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Gagal menghapus mata kuliah:", error);
+    return NextResponse.json({ error: "Gagal menghapus mata kuliah: " + error.message }, { status: 500 });
   }
 }
