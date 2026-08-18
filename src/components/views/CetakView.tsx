@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { fmtTgl } from "@/lib/format";
 
@@ -88,11 +88,29 @@ function CoursePage({ m }: CoursePageProps) {
 }
 
 export default function CetakView() {
-  const { courses } = useApp();
+  const { courses, showToast } = useApp();
   const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id || 1);
   const [printAll, setPrintAll] = useState(false);
   const [exporting, setExporting] = useState(false);
-  
+  const [query, setQuery] = useState("");
+
+  // Filter berdasarkan nama mata kuliah — daftarnya sudah ratusan baris, jadi
+  // dropdown polos tidak cukup untuk mencari satu mata kuliah tertentu.
+  const filteredCourses = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = q ? courses.filter((c) => c.nama.toLowerCase().includes(q)) : courses;
+    return [...list].sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [courses, query]);
+
+  // Kalau mata kuliah yang lagi dipilih tersaring keluar oleh filter, pindah ke
+  // hasil pertama supaya pratinjau tidak nyangkut di kelas yang tidak tampil lagi.
+  useEffect(() => {
+    if (filteredCourses.length === 0) return;
+    if (!filteredCourses.some((c) => c.id === selectedCourseId)) {
+      setSelectedCourseId(filteredCourses[0].id);
+    }
+  }, [filteredCourses, selectedCourseId]);
+
   const m = courses.find((c) => c.id === selectedCourseId) || courses[0];
 
   const handleExportSingle = async () => {
@@ -115,17 +133,18 @@ export default function CetakView() {
       clone.style.padding = "0";
 
       const opt = {
-        margin:       [15, 15, 15, 15],
+        margin:       [15, 15, 15, 15] as [number, number, number, number],
         filename:     `Berita_Acara_${m.nama.replace(/\s+/g, "_")}_Kelas_${m.kelas}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
+        image:        { type: 'jpeg' as const, quality: 0.98 },
         html2canvas:  { scale: 2.2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
 
       await html2pdf().set(opt).from(clone).save();
+      showToast("success", "PDF berhasil diunduh.");
     } catch (err) {
       console.error("Gagal mengunduh PDF:", err);
-      alert("Gagal mengunduh PDF");
+      showToast("error", "Gagal mengunduh PDF");
     } finally {
       setExporting(false);
     }
@@ -161,18 +180,19 @@ export default function CetakView() {
         });
 
         const opt = {
-          margin:       [15, 15, 15, 15],
-          filename:     `Berita_Acara_Semua_Kelas.pdf`,
-          image:        { type: 'jpeg', quality: 0.98 },
+          margin:       [15, 15, 15, 15] as [number, number, number, number],
+          filename:     query.trim() ? `Berita_Acara_${query.trim().replace(/\s+/g, "_")}.pdf` : `Berita_Acara_Semua_Kelas.pdf`,
+          image:        { type: 'jpeg' as const, quality: 0.98 },
           html2canvas:  { scale: 2.2, useCORS: true, logging: false },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
           pagebreak:    { mode: ['css', 'legacy'] }
         };
 
         await html2pdf().set(opt).from(clone).save();
+        showToast("success", "Semua PDF berhasil diunduh.");
       } catch (err) {
         console.error("Gagal mengunduh semua PDF:", err);
-        alert("Gagal mengunduh semua PDF");
+        showToast("error", "Gagal mengunduh semua PDF");
       } finally {
         setPrintAll(false);
         setExporting(false);
@@ -201,6 +221,22 @@ export default function CetakView() {
         <div className="panel-h">
           <h2>Pratinjau berita acara</h2>
           <div className="right">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="🔍 Cari nama mata kuliah..."
+              disabled={exporting}
+              style={{
+                padding: "6px 10px",
+                fontSize: "12.5px",
+                borderRadius: "var(--r)",
+                border: "1px solid var(--rule)",
+                background: "var(--paper)",
+                minWidth: "200px",
+                marginRight: "8px"
+              }}
+            />
             <select
               value={selectedCourseId}
               onChange={(e) => setSelectedCourseId(Number(e.target.value))}
@@ -214,30 +250,37 @@ export default function CetakView() {
                 color: "var(--ink)",
                 marginRight: "8px"
               }}
-              disabled={exporting}
+              disabled={exporting || filteredCourses.length === 0}
             >
-              {courses.map((c) => (
+              {filteredCourses.map((c) => (
                 <option key={c.id} value={c.id}>
                   Kelas {c.kelas} — {c.nama} ({c.tipe})
                 </option>
               ))}
             </select>
-            <button className="btn btn-sm" onClick={handleExportAll} disabled={exporting}>
-              {exporting && printAll ? "Mengunduh..." : "Unduh semua kelas"}
+            <button className="btn btn-sm" onClick={handleExportAll} disabled={exporting || filteredCourses.length === 0}>
+              {exporting && printAll ? "Mengunduh..." : query.trim() ? `Unduh hasil (${filteredCourses.length})` : "Unduh semua kelas"}
             </button>
-            <button className="btn btn-sm btn-p" onClick={handleExportSingle} disabled={exporting}>
+            <button className="btn btn-sm btn-p" onClick={handleExportSingle} disabled={exporting || !m}>
               {exporting && !printAll ? "Mengunduh..." : "Unduh PDF"}
             </button>
           </div>
           <p>Kolom tanda tangan diganti kolom kehadiran dosen, sesuai kesepakatan dengan program studi.</p>
         </div>
-        <div className="pdfbox">
-          {printAll ? (
-            courses.map((c) => <CoursePage key={c.id} m={c} />)
-          ) : (
-            <CoursePage m={m} />
-          )}
-        </div>
+        {filteredCourses.length === 0 && (
+          <div className="empty-state" style={{ margin: "20px" }}>
+            <b>Tidak ada mata kuliah yang cocok dengan &quot;{query}&quot;</b>
+          </div>
+        )}
+        {filteredCourses.length > 0 && (
+          <div className="pdfbox">
+            {printAll ? (
+              filteredCourses.map((c) => <CoursePage key={c.id} m={c} />)
+            ) : (
+              m && <CoursePage m={m} />
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

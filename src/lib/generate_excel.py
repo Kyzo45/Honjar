@@ -28,13 +28,21 @@ def parse_time(time_str):
     except:
         return time_str
 
-def is_dosen_luar(name):
-    name_lower = name.lower()
+def is_dosen_luar(row):
+    # Sumber kebenaran: field "status" (dari kolom status_dosen di database, diatur
+    # lewat halaman List Dosen). Daftar kata kunci di bawah cuma fallback untuk baris
+    # lama/offline yang belum membawa field status sama sekali.
+    status = row.get("status")
+    if status:
+        return status == "luar"
+
+    name_lower = row.get("dsn", "").lower()
     luar_keywords = [
         "anggi sandika",
-        "aditiyana",
+        "adityana",
         "amelia",
         "hendy satria",
+        "handy satria",
         "i'oh",
         "iin nurhayati",
         "sonny feisal",
@@ -48,9 +56,12 @@ def main():
         # Baca JSON payload dari stdin
         payload = json.loads(sys.stdin.read())
         
-        template_path = r"d:\7. Semester 7\KP\Honjar\File Pendukung\Honjar Mei Tahun 2026 PRODI TLM D4.xlsx"
+        # Path dihitung relatif terhadap lokasi skrip ini (src/lib/generate_excel.py),
+        # supaya tidak bergantung pada drive/folder proyek di komputer tertentu.
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        template_path = os.path.join(project_root, "File Pendukung", "Honjar Mei Tahun 2026 PRODI TLM D4.xlsx")
         if not os.path.exists(template_path):
-            print("ERROR: Template file not found", file=sys.stderr)
+            print(f"ERROR: Template file not found at {template_path}", file=sys.stderr)
             sys.exit(1)
             
         wb = openpyxl.load_workbook(template_path)
@@ -64,7 +75,7 @@ def main():
         rows_luar = []
         
         for r in rows_data:
-            if is_dosen_luar(r["dsn"]):
+            if is_dosen_luar(r):
                 rows_luar.append(r)
             else:
                 rows_tetap.append(r)
@@ -100,24 +111,44 @@ def main():
                     'border': copy.copy(cell.border),
                     'number_format': cell.number_format
                 })
-                
+
+            # Tinggi baris data normal, diambil dari baris pertama yang tidak dipakai
+            # sebagai baris style (baris 8 pada template asli). Dipakai untuk menimpa
+            # tinggi baris 7 bawaan template yang sengaja dibuat sangat kecil (0.95px,
+            # baris bantu kosong) — kalau tidak ditimpa, baris data pertama ikut kecil.
+            normal_row_height = sheet.row_dimensions[8].height if 8 in sheet.row_dimensions else 15
+
+            # Isian baris pemisah kuning antar kelompok dosen
+            yellow_fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
+
             # Bersihkan seluruh data lama dari baris 7 sampai baris terakhir secara efisien
             sheet.delete_rows(7, sheet.max_row - 6)
-                    
+
             # Tulis data baru mulai baris 7
-            current_dsn = ""
+            current_dsn = None
             no_counter = 0
-            
+
             start_row = 7
-            for i, r in enumerate(data):
-                row_num = start_row + i
-                
-                no_val = None
+            row_num = start_row
+            for r in data:
                 if r["dsn"] != current_dsn:
+                    # Baris pemisah kuning sebelum kelompok dosen baru (bukan sebelum yang pertama)
+                    if current_dsn is not None:
+                        sheet.row_dimensions[row_num].height = normal_row_height
+                        for col_idx in range(1, 12):
+                            cell = sheet.cell(row=row_num, column=col_idx)
+                            cell.value = None
+                            style = template_styles[col_idx - 1]
+                            if style['border']: cell.border = copy.copy(style['border'])
+                            cell.fill = yellow_fill
+                        row_num += 1
+
                     no_counter += 1
                     no_val = no_counter
                     current_dsn = r["dsn"]
-                
+                else:
+                    no_val = None
+
                 # Tulis data serta formula Excel
                 cell_vals = {
                     1: no_val,                           # NO
@@ -132,11 +163,12 @@ def main():
                     10: r["kls"],                        # KELAS
                     11: f'=TEXT(E{row_num}-D{row_num},"[mm]")' # Hitung Menit (Helper)
                 }
-                
+
+                sheet.row_dimensions[row_num].height = normal_row_height
                 for col_idx in range(1, 12):
                     cell = sheet.cell(row=row_num, column=col_idx)
                     cell.value = cell_vals[col_idx]
-                    
+
                     # Salin style template dan ubah font name ke Times New Roman
                     style = template_styles[col_idx - 1]
                     if style['font']:
@@ -147,12 +179,14 @@ def main():
                     if style['fill']: cell.fill = copy.copy(style['fill'])
                     if style['border']: cell.border = copy.copy(style['border'])
                     if style['number_format']: cell.number_format = style['number_format']
-            
+
+                row_num += 1
+
             # Tulis Tanda Tangan Ka. Prodi di akhir tabel (3 baris setelah data berakhir)
-            last_data_row = start_row + len(data) - 1
+            last_data_row = row_num - 1
             if len(data) == 0:
                 last_data_row = 6
-                
+
             sig_start = last_data_row + 4
             
             sheet.cell(row=sig_start, column=8).value = f"Cimahi, {current_date_str}"

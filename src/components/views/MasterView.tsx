@@ -1,22 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import CourseFormModal from "@/components/CourseFormModal";
 import type { MataKuliah } from "@/lib/types";
 
 export default function MasterView() {
-  const { courses, addCourse, updateCourse, lecturers, addLecturer, deleteLecturer } = useApp();
+  const { courses, addCourse, updateCourse, deleteCourse, semesterFilter } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<MataKuliah | null>(null);
-  const [newLecName, setNewLecName] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
 
-  const handleAddLecturer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newLecName.trim()) {
-      addLecturer(newLecName.trim());
-      setNewLecName("");
-    }
+  const filteredCourses = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return courses.filter((m) => {
+      if (semesterFilter !== "all" && m.semester !== semesterFilter) return false;
+      if (!q) return true;
+      return (
+        m.kode.toLowerCase().includes(q) ||
+        m.nama.toLowerCase().includes(q) ||
+        m.kelas.toLowerCase().includes(q) ||
+        m.koor.toLowerCase().includes(q) ||
+        m.pj.toLowerCase().includes(q) ||
+        m.dosen.some((d) => d.toLowerCase().includes(q))
+      );
+    });
+  }, [courses, query, semesterFilter]);
+
+  const handleDelete = async (m: MataKuliah) => {
+    if (!confirm(`Hapus mata kuliah "${m.nama}" (${m.kode} · Kelas ${m.kelas})? Seluruh berita acara dan data terkait akan ikut terhapus.`)) return;
+    setDeletingId(m.id);
+    await deleteCourse(m.id);
+    setDeletingId(null);
   };
 
   return (
@@ -24,7 +40,21 @@ export default function MasterView() {
       <div className="panel">
         <div className="panel-h">
           <h2>Mata kuliah dan penugasan</h2>
-          <div className="right">
+          <div className="right" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="🔍 Cari kode, nama, kelas, dosen..."
+              style={{
+                padding: "6px 10px",
+                fontSize: "12.5px",
+                borderRadius: "var(--r)",
+                border: "1px solid var(--rule)",
+                background: "var(--paper)",
+                minWidth: "220px"
+              }}
+            />
             <button className="btn btn-sm btn-p" onClick={() => setShowForm(true)}>Tambah mata kuliah</button>
           </div>
         </div>
@@ -46,7 +76,7 @@ export default function MasterView() {
               </tr>
             </thead>
             <tbody>
-              {courses.map((m) => (
+              {filteredCourses.map((m) => (
                 <tr key={m.id}>
                   <td className="num">{m.kode}</td>
                   <td><b>{m.nama}</b></td>
@@ -64,81 +94,48 @@ export default function MasterView() {
                     {m.dosen.map((d, i) => <span key={d}>{i > 0 && <br />}{d}</span>)}
                   </td>
                   <td>{m.pj}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button className="btn btn-sm" onClick={() => setEditingCourse(m)}>Ubah</button>
+                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <button className="btn btn-sm" onClick={() => setEditingCourse(m)}>Ubah</button>{" "}
+                    <button
+                      className="btn btn-sm"
+                      style={{ color: "var(--rose)" }}
+                      disabled={deletingId === m.id}
+                      onClick={() => handleDelete(m)}
+                    >
+                      {deletingId === m.id ? "Menghapus..." : "Hapus"}
+                    </button>
                   </td>
                 </tr>
               ))}
+              {filteredCourses.length === 0 && (
+                <tr>
+                  <td colSpan={11} style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px" }}>
+                    {courses.length === 0
+                      ? "Belum ada mata kuliah."
+                      : query
+                        ? `Tidak ada mata kuliah yang cocok dengan "${query}".`
+                        : "Tidak ada mata kuliah pada semester ini."}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      <div className="panel" style={{ maxWidth: "600px" }}>
-        <div className="panel-h">
-          <h2>Daftar Dosen Aktif</h2>
-          <p>Dosen dalam daftar ini akan muncul sebagai pilihan pengajar saat PJ mengisi berita acara.</p>
-        </div>
-        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}>
-          <form onSubmit={handleAddLecturer} style={{ display: "flex", gap: "8px" }}>
-            <input
-              type="text"
-              placeholder="Nama Lengkap Dosen beserta Gelar..."
-              value={newLecName}
-              onChange={(e) => setNewLecName(e.target.value)}
-              style={{
-                flex: 1,
-                padding: "8px 12px",
-                borderRadius: "var(--r)",
-                border: "1px solid var(--rule)",
-                background: "var(--paper)"
-              }}
-            />
-            <button type="submit" className="btn btn-p">＋ Tambah Dosen</button>
-          </form>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {lecturers.map((lec) => (
-              <span key={lec} className="tag t-done" style={{ padding: "6px 12px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                {lec}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm(`Apakah Anda yakin ingin menghapus dosen "${lec}"?`)) {
-                      deleteLecturer(lec);
-                    }
-                  }}
-                  style={{
-                    border: "none",
-                    background: "none",
-                    color: "var(--rose)",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    padding: "0 2px",
-                    display: "inline-flex",
-                    alignItems: "center"
-                  }}
-                  title="Hapus Dosen"
-                >
-                  ✕
-                </button>
-              </span>
-            ))}
-          </div>
         </div>
       </div>
 
       {showForm && (
         <CourseFormModal
           onClose={() => setShowForm(false)}
-          onSubmit={(input) => { addCourse(input); setShowForm(false); }}
+          onSubmit={(input) => addCourse(input)}
         />
       )}
 
       {editingCourse && (
         <CourseFormModal
+          key={editingCourse.id}
           course={editingCourse}
           onClose={() => setEditingCourse(null)}
-          onSubmit={(input) => { updateCourse(editingCourse.id, input); setEditingCourse(null); }}
+          onSubmit={(input) => updateCourse(editingCourse.id, input)}
         />
       )}
     </section>

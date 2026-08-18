@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { MHS } from "@/lib/data";
-import { jamAjar, menit } from "@/lib/format";
+import { daysBetween, jamAjar, menit } from "@/lib/format";
 import type { Kehadiran, KuliahRow, MataKuliah, Metode, StatusMhs, AbsentRecord } from "@/lib/types";
 
 const METODE_OPTIONS: Metode[] = ["Teori", "Praktikum", "Lapangan"];
@@ -26,6 +25,7 @@ interface AbsentEntry {
   status: StatusMhs;
   locked: boolean;
   fileName?: string;
+  fileUrl?: string;
 }
 
 function todayISO() {
@@ -42,28 +42,40 @@ interface Props {
 }
 
 export default function SheetModal({ course, row }: Props) {
-  const { closeSheet, saveRow, lecturers } = useApp();
+  const { closeSheet, saveRow, uploadBukti } = useApp();
   const isEdit = Boolean(row.topik);
+
+  // Dosen yang bisa dipilih untuk mengisi pertemuan hanya dosen koordinator
+  // dan dosen pengampu mata kuliah ini, bukan seluruh daftar dosen di aplikasi.
+  const courseLecturers = Array.from(new Set([course.koor, ...course.dosen].filter(Boolean)));
+
+  // Roster mahasiswa mata kuliah ini — langsung dari peserta KRS-nya (course.roster),
+  // bukan pencocokan field kelas manapun.
+  const roster = course.roster;
 
   const [tgl, setTgl] = useState(row.tgl || todayISO());
   const [mulai, setMulai] = useState(row.jam ? row.jam[0] : "14:40");
   const [selesai, setSelesai] = useState(row.jam ? row.jam[1] : "16:20");
   const [metode, setMetode] = useState<Metode>(row.metode || "Teori");
   const [topik, setTopik] = useState(row.topik || "");
-  
+
   // Set dynamic default dosen
-  const [dosen, setDosen] = useState(row.dosen || lecturers[0] || "Dr. Arina Novilla, M.Kes.");
+  const [dosen, setDosen] = useState(row.dosen || courseLecturers[0] || "");
   const [kehadiran, setKehadiran] = useState<Kehadiran>(row.kehadiran || "hadir");
   const [topikError, setTopikError] = useState(false);
+  const [tglError, setTglError] = useState(false);
+  const [jamError, setJamError] = useState(false);
+  const [validationMsg, setValidationMsg] = useState<string | null>(null);
   const topikRef = useRef<HTMLTextAreaElement>(null);
 
   // Load existing absents from row state instead of static dummy data
   const [absentList, setAbsentList] = useState<AbsentEntry[]>(() =>
     row.absents
-      ? row.absents.map((a) => ({ nim: a.nim, status: a.status, locked: false, fileName: a.fileName }))
+      ? row.absents.map((a) => ({ nim: a.nim, status: a.status, locked: false, fileName: a.fileName, fileUrl: a.fileUrl }))
       : []
   );
-  
+  const [uploadingNim, setUploadingNim] = useState<string | null>(null);
+
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -96,7 +108,7 @@ export default function SheetModal({ course, row }: Props) {
   const aTagClass = absen === 0 ? "t-done" : absen <= 3 ? "t-wait" : "t-off";
   const aTagLabel = absen === 0 ? "Lengkap" : `${absen} tidak hadir`;
 
-  const available = MHS.filter(
+  const available = roster.filter(
     ({ nim, nama }) =>
       !absentList.some((a) => a.nim === nim) &&
       (nama.toLowerCase().includes(search.toLowerCase()) || nim.includes(search))
@@ -112,22 +124,51 @@ export default function SheetModal({ course, row }: Props) {
   const setStatus = (nim: string, status: StatusMhs) => {
     setAbsentList((prev) => prev.map((a) => (a.nim === nim ? { ...a, status } : a)));
   };
-  const setFile = (nim: string, fileName: string) => {
-    setAbsentList((prev) => prev.map((a) => (a.nim === nim ? { ...a, fileName } : a)));
+  const handleFileChange = async (nim: string, file: File | undefined) => {
+    if (!file) return;
+    setUploadingNim(nim);
+    const res = await uploadBukti(file);
+    setUploadingNim(null);
+    if (res.success) {
+      setAbsentList((prev) =>
+        prev.map((a) => (a.nim === nim ? { ...a, fileName: res.originalName, fileUrl: res.url } : a))
+      );
+    }
   };
 
   const handleSave = () => {
-    if (!topik.trim()) {
-      setTopikError(true);
-      topikRef.current?.focus();
+    const nextTopikError = !topik.trim();
+
+    let tglMsg: string | null = null;
+    if (!tgl) tglMsg = "Tanggal wajib diisi";
+    else {
+      const selisih = daysBetween(tgl, todayISO()); // hari ini - tanggal dipilih
+      if (selisih < 0) tglMsg = "Tanggal tidak boleh di masa depan";
+      else if (selisih > 7) tglMsg = "Tanggal sudah lewat batas input 7 hari";
+    }
+    const nextTglError = tglMsg !== null;
+
+    let jamMsg: string | null = null;
+    if (!mulai || !selesai) jamMsg = "Jam mulai dan jam selesai wajib diisi";
+    else if (menit(mulai, selesai) <= 0) jamMsg = "Jam selesai harus setelah jam mulai";
+    const nextJamError = jamMsg !== null;
+
+    setTopikError(nextTopikError);
+    setTglError(nextTglError);
+    setJamError(nextJamError);
+
+    if (nextTopikError || nextTglError || nextJamError) {
+      setValidationMsg(tglMsg || jamMsg || (nextTopikError ? "Pokok bahasan kuliah wajib diisi" : null));
+      if (nextTopikError) topikRef.current?.focus();
       return;
     }
-    setTopikError(false);
+    setValidationMsg(null);
 
     const mappedAbsents: AbsentRecord[] = absentList.map((a) => ({
       nim: a.nim,
       status: a.status,
-      fileName: a.fileName
+      fileName: a.fileName,
+      fileUrl: a.fileUrl
     }));
 
     saveRow(course.id, row.ke, {
@@ -158,16 +199,25 @@ export default function SheetModal({ course, row }: Props) {
           <fieldset>
             <legend>Waktu dan metode</legend>
             <div className="row c3">
-              <label className="f"><span>Tanggal</span>
-                <input type="date" value={tgl} onChange={(e) => setTgl(e.target.value)} />
+              <label className="f"><span>Tanggal <em>· maks. 7 hari ke belakang</em></span>
+                <input type="date" value={tgl}
+                  style={tglError ? { borderColor: "var(--rose)" } : undefined}
+                  onChange={(e) => { setTgl(e.target.value); if (tglError) { setTglError(false); setValidationMsg(null); } }} />
               </label>
               <label className="f"><span>Jam mulai</span>
-                <input type="time" value={mulai} onChange={(e) => setMulai(e.target.value)} />
+                <input type="time" value={mulai}
+                  style={jamError ? { borderColor: "var(--rose)" } : undefined}
+                  onChange={(e) => { setMulai(e.target.value); if (jamError) { setJamError(false); setValidationMsg(null); } }} />
               </label>
               <label className="f"><span>Jam selesai</span>
-                <input type="time" value={selesai} onChange={(e) => setSelesai(e.target.value)} />
+                <input type="time" value={selesai}
+                  style={jamError ? { borderColor: "var(--rose)" } : undefined}
+                  onChange={(e) => { setSelesai(e.target.value); if (jamError) { setJamError(false); setValidationMsg(null); } }} />
               </label>
             </div>
+            {validationMsg && (
+              <p style={{ color: "var(--rose)", fontSize: "12px", margin: "0 0 12px" }}>{validationMsg}</p>
+            )}
             <div className="row">
               <label className="f"><span>Metode</span>
                 <div className="seg" role="group">
@@ -202,7 +252,8 @@ export default function SheetModal({ course, row }: Props) {
             <div className="row c2">
               <label className="f"><span>Dosen yang mengajar</span>
                 <select value={dosen} onChange={(e) => setDosen(e.target.value)}>
-                  {lecturers.map((d) => <option key={d} value={d}>{d}</option>)}
+                  {courseLecturers.map((d) => <option key={d} value={d}>{d}</option>)}
+                  {dosen && !courseLecturers.includes(dosen) && <option value={dosen}>{dosen}</option>}
                 </select>
               </label>
               <label className="f"><span>Kehadiran dosen <em>· pengganti tanda tangan</em></span>
@@ -241,7 +292,9 @@ export default function SheetModal({ course, row }: Props) {
                     <div className="combo-list">
                       {available.length === 0 ? (
                         <div className="combo-empty">
-                          {absentList.length === MHS.length ? "Semua mahasiswa sudah ditandai" : "Tidak ditemukan"}
+                          {roster.length === 0
+                            ? "Kelas ini belum punya data mahasiswa"
+                            : absentList.length === roster.length ? "Semua mahasiswa sudah ditandai" : "Tidak ditemukan"}
                         </div>
                       ) : (
                         available.map(({ nim, nama }) => (
@@ -259,12 +312,12 @@ export default function SheetModal({ course, row }: Props) {
             {absentList.length > 0 ? (
               <div className="absent-list">
                 {absentList.map((a) => {
-                  const student = MHS.find((m) => m.nim === a.nim);
+                  const student = roster.find((m) => m.nim === a.nim);
                   const needsUpload = a.status === "sakit" || a.status === "izin";
                   return (
                     <div className="absent-row" key={a.nim}>
                       <div className="who">
-                        <b>{student?.nama}</b>
+                        <b>{student?.nama || `Mahasiswa ${a.nim} (sudah tidak terdaftar di kelas ini)`}</b>
                         <span>{a.nim}</span>
                       </div>
                       <select value={a.status} onChange={(e) => setStatus(a.nim, e.target.value as StatusMhs)}>
@@ -273,13 +326,25 @@ export default function SheetModal({ course, row }: Props) {
                         <option value="izin">Izin</option>
                       </select>
                       {needsUpload && (
-                        <label className={`upload-chip ${a.fileName ? "done" : ""}`}>
-                          <input
-                            type="file"
-                            onChange={(e) => setFile(a.nim, e.target.files?.[0]?.name ?? "")}
-                          />
-                          {a.fileName ? `📎 ${a.fileName}` : `Unggah surat ${a.status === "sakit" ? "sakit" : "izin"}`}
-                        </label>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          {a.fileUrl && (
+                            <a href={a.fileUrl} target="_blank" rel="noreferrer" className="upload-chip done">
+                              📎 {a.fileName || "Lihat berkas"}
+                            </a>
+                          )}
+                          <label className="upload-chip">
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png,.webp"
+                              onChange={(e) => handleFileChange(a.nim, e.target.files?.[0])}
+                            />
+                            {uploadingNim === a.nim
+                              ? "Mengunggah…"
+                              : a.fileUrl
+                                ? "Ganti"
+                                : `Unggah surat ${a.status === "sakit" ? "sakit" : "izin"}`}
+                          </label>
+                        </div>
                       )}
                       <button type="button" className="rm" aria-label="Hapus" onClick={() => removeAbsent(a.nim)}>✕</button>
                     </div>
