@@ -39,6 +39,10 @@ export default function Rail() {
           <NavButton go="monitor" icon="◉" label="Kelengkapan" />
           <NavButton go="honor" icon="∑" label="Rekap honor" />
           <NavButton go="master" icon="◫" label="Master mata kuliah" />
+          <NavButton go="dosen" icon="🎓" label="List dosen" />
+          <NavButton go="pjlist" icon="🧑‍🎓" label="List Penanggung Jawab" />
+          <NavButton go="mahasiswa" icon="🧾" label="Data mahasiswa" />
+          <NavButton go="kelas" icon="🏫" label="Daftar kelas" />
           <NavButton go="cetak" icon="⎙" label="Cetak berita acara" />
         </div>
       )}

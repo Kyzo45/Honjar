@@ -1,8 +1,30 @@
 "use client";
 
 import { useApp } from "@/context/AppContext";
+import { fmtTgl } from "@/lib/format";
+import type { KuliahRow, MataKuliah } from "@/lib/types";
 
-const INPUT_TERAKHIR = ["23 Mei", "26 Mei", "19 Mei", "2 Mei"];
+const HARI_URUT = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+// Pertemuan yang sudah terisi tapi tanggal/jamnya tidak sama dengan jadwal induk
+// mata kuliah — dihitung langsung dari data pertemuan, bukan daftar tetap.
+function hitungMenyimpang(m: MataKuliah): number {
+  return m.rows.filter((r) => {
+    if (r.tipe !== "kuliah" || !r.topik || !r.tgl || !r.jam) return false;
+    const hariAsli = HARI_URUT[new Date(r.tgl + "T00:00").getDay()];
+    return hariAsli !== m.hari || r.jam[0] !== m.jamMulai || r.jam[1] !== m.jamSelesai;
+  }).length;
+}
+
+// Tanggal input pertemuan paling akhir untuk satu mata kuliah, atau null kalau
+// belum ada satupun pertemuan yang diisi.
+function inputTerakhir(m: MataKuliah): string | null {
+  const isFilledKuliahRow = (r: (typeof m.rows)[number]): r is KuliahRow & { tgl: string } =>
+    r.tipe === "kuliah" && Boolean(r.topik) && Boolean(r.tgl);
+  const tanggal = m.rows.filter(isFilledKuliahRow).map((r) => r.tgl);
+  if (tanggal.length === 0) return null;
+  return tanggal.reduce((a, b) => (a > b ? a : b));
+}
 
 export default function MonitorView() {
   const { courses } = useApp();
@@ -33,9 +55,11 @@ export default function MonitorView() {
             {courses.map((m) => {
               const isi = m.rows.filter((r) => r.tipe === "kuliah" && r.topik).length;
               const pct = Math.round((isi / 14) * 100);
+              const menyimpang = hitungMenyimpang(m);
+              const terakhir = inputTerakhir(m);
               const anom =
-                m.id === 3 ? <span className="tag t-wait">1 jam menyimpang</span> :
-                m.id === 4 ? <span className="tag t-off">3 minggu tanpa input</span> :
+                menyimpang > 0 ? <span className="tag t-wait">{menyimpang} pertemuan menyimpang</span> :
+                isi === 0 ? <span className="tag t-off">Belum ada input</span> :
                 <span style={{ color: "var(--ink-3)" }}>—</span>;
               const barColor = pct >= 80 ? "var(--verd)" : pct >= 50 ? "var(--amber)" : "var(--rose)";
               return (
@@ -47,7 +71,7 @@ export default function MonitorView() {
                     <span className="num" style={{ fontSize: 12 }}>{isi}/14 · {pct}%</span>
                     <div className="bar"><i style={{ width: `${pct}%`, background: barColor }} /></div>
                   </td>
-                  <td className="num" style={{ fontSize: 12.5 }}>{INPUT_TERAKHIR[m.id - 1]} 2026</td>
+                  <td className="num" style={{ fontSize: 12.5 }}>{terakhir ? fmtTgl(terakhir).split(", ")[1] : "—"}</td>
                   <td>{anom}</td>
                 </tr>
               );

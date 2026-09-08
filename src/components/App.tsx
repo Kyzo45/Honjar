@@ -9,15 +9,25 @@ import LedgerView from "@/components/views/LedgerView";
 import MonitorView from "@/components/views/MonitorView";
 import HonorView from "@/components/views/HonorView";
 import MasterView from "@/components/views/MasterView";
+import DosenView from "@/components/views/DosenView";
+import PJView from "@/components/views/PJView";
+import MahasiswaView from "@/components/views/MahasiswaView";
+import KelasView from "@/components/views/KelasView";
 import CetakView from "@/components/views/CetakView";
 import LoginView from "@/components/views/LoginView";
+import ToastContainer from "@/components/Toast";
 
 function Shell() {
   const { view, courses, editing, editingRow, user, menuOpen, setMenuOpen } = useApp();
 
   // Jika belum login, tampilkan halaman Login
   if (!user) {
-    return <LoginView />;
+    return (
+      <>
+        <LoginView />
+        <ToastContainer />
+      </>
+    );
   }
 
   const editingCourse = editing ? courses.find((c) => c.id === editing.courseId) : null;
@@ -35,6 +45,10 @@ function Shell() {
             {view === "monitor" && <MonitorView />}
             {view === "honor" && <HonorView />}
             {view === "master" && <MasterView />}
+            {view === "dosen" && <DosenView />}
+            {view === "pjlist" && <PJView />}
+            {view === "mahasiswa" && <MahasiswaView />}
+            {view === "kelas" && <KelasView />}
             {view === "cetak" && <CetakView />}
           </div>
         </div>
@@ -47,6 +61,7 @@ function Shell() {
           row={editingRow}
         />
       )}
+      <ToastContainer />
     </>
   );
 }

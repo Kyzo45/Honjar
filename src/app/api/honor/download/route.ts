@@ -29,9 +29,13 @@ function formatTglId(tglStr: string): string {
 
 export async function POST(req: Request) {
   try {
-    const { month, monthName } = await req.json();
+    const { month, year, monthName } = await req.json();
 
-    // 1. Ambil data mata kuliah dari database
+    // 1. Peta nama dosen -> status (tetap/luar), sumber kebenaran untuk pemisahan sheet
+    const { rows: dosenRows } = await pool.query("SELECT nama, status_dosen FROM dosen");
+    const statusByName = new Map<string, string>(dosenRows.map((d: any) => [d.nama, d.status_dosen]));
+
+    // 2. Ambil data mata kuliah dari database
     const { rows: dbCourses } = await pool.query("SELECT * FROM mata_kuliah");
     const rows: any[] = [];
 
@@ -45,13 +49,15 @@ export async function POST(req: Request) {
       for (const p of meetings) {
         const tglStr = formatDate(p.tanggal) || "";
         if (tglStr) {
-          const parts = tglStr.split("-");
-          const monthNum = parts[1]; // "02", "03", dll.
+          const [yearNum, monthNum] = tglStr.split("-");
+          if (year && year !== "all" && yearNum !== year) continue;
           if (month !== "all" && monthNum !== month) continue;
         }
 
+        const dosenNama = p.dosen_pengajar || c.koordinator;
         rows.push({
-          dsn: p.dosen_pengajar || c.koordinator,
+          dsn: dosenNama,
+          status: statusByName.get(dosenNama) || "tetap",
           tgl: tglStr,
           a: p.jam_mulai ? p.jam_mulai.slice(0, 5) : "",
           b: p.jam_selesai ? p.jam_selesai.slice(0, 5) : "",
@@ -73,8 +79,8 @@ export async function POST(req: Request) {
           if (r.tipe !== "kuliah" || !r.topik) return;
           if (r.kehadiran === "batal") return;
           if (r.tgl) {
-            const parts = r.tgl.split("-");
-            const monthNum = parts[1];
+            const [yearNum, monthNum] = r.tgl.split("-");
+            if (year && year !== "all" && yearNum !== year) return;
             if (month !== "all" && monthNum !== month) return;
           }
           rows.push({
@@ -126,7 +132,7 @@ export async function POST(req: Request) {
       if (err) console.error("Gagal menghapus temp excel file:", err);
     });
 
-    const filename = `Rekap_Honor_Mengajar_${monthName.replace(/\s+/g, "_")}_2026.xlsx`;
+    const filename = `Rekap_Honor_Mengajar_${(monthName || "Semua_Periode").replace(/\s+/g, "_")}.xlsx`;
 
     return new Response(fileBuffer, {
       headers: {
