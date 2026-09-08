@@ -12,7 +12,7 @@ export const ROLE: Record<Role, RoleInfo> = {
 
 export const TITLE: Record<ViewId, [string, string]> = {
   mk: ["Mata kuliah saya", "Kelas yang Anda pegang semester ini."],
-  ledger: ["Berita acara kuliah", "Isi tiap pertemuan setelah kelas selesai. Batas input tujuh hari."],
+  ledger: ["Berita acara kuliah", "Isi tiap pertemuan setelah kelas selesai. Batas input satu bulan."],
   monitor: ["Kelengkapan berita acara", "Pantau kelas yang tertinggal sebelum akhir semester."],
   honor: ["Rekap honor mengajar", "Turunan langsung dari berita acara."],
   master: ["Master mata kuliah", "Mata kuliah, kelas, dan penugasan dosen serta Penanggung Jawab."],
