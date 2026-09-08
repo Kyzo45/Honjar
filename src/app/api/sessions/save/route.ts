@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
+import { BATAS_INPUT_HARI } from "@/lib/format";
 
 function calculateMenit(a: string, b: string): number {
   const p = (s: string) => {
@@ -32,14 +33,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "courseId dan ke wajib diisi" }, { status: 400 });
   }
 
-  // Validasi tanggal: tidak boleh di masa depan, dan maksimal 7 hari ke belakang
+  // Validasi tanggal: tidak boleh di masa depan, dan maksimal 1 bulan ke belakang
   if (patch.tgl) {
     const selisih = daysBetween(patch.tgl, todayISO());
     if (selisih < 0) {
       return NextResponse.json({ error: "Tanggal tidak boleh di masa depan" }, { status: 400 });
     }
-    if (selisih > 7) {
-      return NextResponse.json({ error: "Tanggal sudah lewat batas input 7 hari" }, { status: 400 });
+    if (selisih > BATAS_INPUT_HARI) {
+      return NextResponse.json({ error: "Tanggal sudah lewat batas input 1 bulan" }, { status: 400 });
     }
   }
 

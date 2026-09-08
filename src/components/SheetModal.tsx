@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { daysBetween, jamAjar, menit } from "@/lib/format";
+import { BATAS_INPUT_HARI, daysBetween, jamAjar, menit } from "@/lib/format";
 import type { Kehadiran, KuliahRow, MataKuliah, Metode, StatusMhs, AbsentRecord } from "@/lib/types";
 
 const METODE_OPTIONS: Metode[] = ["Teori", "Praktikum", "Lapangan"];
@@ -144,7 +144,7 @@ export default function SheetModal({ course, row }: Props) {
     else {
       const selisih = daysBetween(tgl, todayISO()); // hari ini - tanggal dipilih
       if (selisih < 0) tglMsg = "Tanggal tidak boleh di masa depan";
-      else if (selisih > 7) tglMsg = "Tanggal sudah lewat batas input 7 hari";
+      else if (selisih > BATAS_INPUT_HARI) tglMsg = "Tanggal sudah lewat batas input 1 bulan";
     }
     const nextTglError = tglMsg !== null;
 
@@ -199,7 +199,7 @@ export default function SheetModal({ course, row }: Props) {
           <fieldset>
             <legend>Waktu dan metode</legend>
             <div className="row c3">
-              <label className="f"><span>Tanggal <em>· maks. 7 hari ke belakang</em></span>
+              <label className="f"><span>Tanggal <em>· maks. 1 bulan ke belakang</em></span>
                 <input type="date" value={tgl}
                   style={tglError ? { borderColor: "var(--rose)" } : undefined}
                   onChange={(e) => { setTgl(e.target.value); if (tglError) { setTglError(false); setValidationMsg(null); } }} />

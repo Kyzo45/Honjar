@@ -18,6 +18,9 @@ export function jamAjar(mnt: number): number {
   return Math.floor(mnt / 50);
 }
 
+// Batas maksimal mundur (dalam hari) saat PJ mengisi tanggal pertemuan.
+export const BATAS_INPUT_HARI = 30;
+
 // Selisih hari (b - a) dari dua tanggal berformat YYYY-MM-DD, dihitung di UTC
 // supaya tidak terpengaruh zona waktu lokal browser/server.
 export function daysBetween(a: string, b: string): number {
