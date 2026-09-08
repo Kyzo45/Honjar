@@ -1,23 +1,8 @@
-import type { Mahasiswa, MataKuliah, Row } from "./types";
+import type { MataKuliah, Row } from "./types";
 
 /* =========================================================
    DATA CONTOH — diambil dari dokumen asli program studi
    ========================================================= */
-
-export const MHS: Mahasiswa[] = [
-  { nim: "4211001", nama: "Adinda Pramesti" },
-  { nim: "4211002", nama: "Bagas Nurwahid" },
-  { nim: "4211003", nama: "Citra Halimah" },
-  { nim: "4211004", nama: "Dwi Anggara" },
-  { nim: "4211005", nama: "Elsa Nurhaliza" },
-  { nim: "4211006", nama: "Fajar Sidiq" },
-  { nim: "4211007", nama: "Gita Maharani" },
-  { nim: "4211008", nama: "Hilman Rizky" },
-  { nim: "4211009", nama: "Intan Permata" },
-  { nim: "4211010", nama: "Joko Prasetyo" },
-  { nim: "4211011", nama: "Karina Ayu" },
-  { nim: "4211012", nama: "Lukman Hakim" },
-];
 
 const TOPIK: (string | null)[] = [
   "Pendahuluan", "Komponen dan fungsi darah", "Hematopoesis", "Eritropoesis",
@@ -122,7 +107,7 @@ const SEED: MataKuliahSeed[] = [
 export function buildInitialCourses(): MataKuliah[] {
   return SEED.map((m) => ({
     id: m.id, kode: m.kode, nama: m.nama, kelas: m.kelas, sks: m.sks,
-    koor: m.koor, dosen: m.dosen, mhs: m.mhs, pj: m.pj,
+    koor: m.koor, dosen: m.dosen, mhs: m.mhs, roster: [], pj: m.pj, pjId: null,
     rows: buildRows(m.koor, m.isi),
     tipe: m.tipe,
     semester: m.semester,

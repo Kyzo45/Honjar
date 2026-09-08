@@ -20,7 +20,10 @@ DROP TABLE IF EXISTS mahasiswa CASCADE;
 CREATE TABLE mahasiswa (
     nim VARCHAR(15) PRIMARY KEY,
     nama VARCHAR(100) NOT NULL,
-    kelas VARCHAR(10) NOT NULL
+    angkatan VARCHAR(10)
+    -- Tidak ada kolom kelas: satu mahasiswa bisa ikut banyak mata kuliah dengan
+    -- label kelas yang berbeda-beda. Kepesertaan sebenarnya ada di tabel krs,
+    -- per mata kuliah masing-masing (many-to-many), bukan satu label tetap.
 );
 
 -- ==========================================
@@ -31,7 +34,10 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     nama VARCHAR(100) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'pj'))
+    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'pj')),
+    nim VARCHAR(15) UNIQUE,
+    angkatan VARCHAR(10),
+    no_hp VARCHAR(20)
 );
 
 -- ==========================================
@@ -39,7 +45,9 @@ CREATE TABLE users (
 -- ==========================================
 CREATE TABLE dosen (
     id SERIAL PRIMARY KEY,
-    nama VARCHAR(100) NOT NULL UNIQUE
+    nid VARCHAR(20) NOT NULL UNIQUE,
+    nama VARCHAR(100) NOT NULL UNIQUE,
+    status_dosen VARCHAR(10) NOT NULL DEFAULT 'tetap' CHECK (status_dosen IN ('tetap', 'luar'))
 );
 
 -- ==========================================
@@ -114,7 +122,8 @@ CREATE TABLE kehadiran_mahasiswa (
     pertemuan_id INT,
     mahasiswa_nim VARCHAR(15),
     status VARCHAR(10) NOT NULL CHECK (status IN ('hadir', 'sakit', 'izin', 'tanpa')),
-    file_bukti VARCHAR(255) NULL,
+    file_bukti VARCHAR(255) NULL, -- path servable ke berkas terunggah, mis. /uploads/bukti/xxxx.pdf
+    file_nama_asli VARCHAR(255) NULL, -- nama asli berkas saat diunggah, untuk ditampilkan
     UNIQUE (pertemuan_id, mahasiswa_nim),
     FOREIGN KEY (pertemuan_id) REFERENCES pertemuan(id) ON DELETE CASCADE,
     FOREIGN KEY (mahasiswa_nim) REFERENCES mahasiswa(nim) ON DELETE CASCADE
@@ -134,29 +143,29 @@ ON CONFLICT (username) DO NOTHING;
 SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE(MAX(id), 1)) FROM users;
 
 -- 2. Seeding Data Mahasiswa
-INSERT INTO mahasiswa (nim, nama, kelas) VALUES
-('4211001', 'Adinda Pramesti', '1C'),
-('4211002', 'Bagas Nurwahid', '1C'),
-('4211003', 'Citra Halimah', '1C'),
-('4211004', 'Dwi Anggara', '1C'),
-('4211005', 'Elsa Nurhaliza', '1C'),
-('4211006', 'Fajar Sidiq', '1C'),
-('4211007', 'Gita Maharani', '1C'),
-('4211008', 'Hilman Rizky', '1C'),
-('4211009', 'Intan Permata', '1C'),
-('4211010', 'Joko Prasetyo', '1C'),
-('4211011', 'Karina Ayu', '1C'),
-('4211012', 'Lukman Hakim', '1C')
+INSERT INTO mahasiswa (nim, nama, angkatan) VALUES
+('4211001', 'Adinda Pramesti', '2021'),
+('4211002', 'Bagas Nurwahid', '2021'),
+('4211003', 'Citra Halimah', '2021'),
+('4211004', 'Dwi Anggara', '2021'),
+('4211005', 'Elsa Nurhaliza', '2021'),
+('4211006', 'Fajar Sidiq', '2021'),
+('4211007', 'Gita Maharani', '2021'),
+('4211008', 'Hilman Rizky', '2021'),
+('4211009', 'Intan Permata', '2021'),
+('4211010', 'Joko Prasetyo', '2021'),
+('4211011', 'Karina Ayu', '2021'),
+('4211012', 'Lukman Hakim', '2021')
 ON CONFLICT (nim) DO NOTHING;
 
 -- 3. Seeding Data Dosen
-INSERT INTO dosen (id, nama) VALUES
-(1, 'Dr. Arina Novilla, M.Kes.'),
-(2, 'M. Ratna Ningrum, M.Si.'),
-(3, 'Taufik Gunawan, S.Tr.Kes.'),
-(4, 'Bayu Dwi Rianto, M.Biomed.'),
-(5, 'Dr. Erick Khristian, M.Si.'),
-(6, 'Anggi Sandika, S.Tr.Kes., MM.')
+INSERT INTO dosen (id, nid, nama, status_dosen) VALUES
+(1, 'DSN0001', 'Dr. Arina Novilla, M.Kes.', 'tetap'),
+(2, 'DSN0002', 'M. Ratna Ningrum, M.Si.', 'tetap'),
+(3, 'DSN0003', 'Taufik Gunawan, S.Tr.Kes.', 'tetap'),
+(4, 'DSN0004', 'Bayu Dwi Rianto, M.Biomed.', 'tetap'),
+(5, 'DSN0005', 'Dr. Erick Khristian, M.Si.', 'tetap'),
+(6, 'DSN0006', 'Anggi Sandika, S.Tr.Kes., MM.', 'luar')
 ON CONFLICT (nama) DO NOTHING;
 
 SELECT setval(pg_get_serial_sequence('dosen', 'id'), COALESCE(MAX(id), 1)) FROM dosen;
@@ -180,12 +189,14 @@ INSERT INTO dosen_mata_kuliah (mata_kuliah_id, dosen_id) VALUES
 (4, 6)  -- Komunikasi - Anggi Sandika, S.Tr.Kes., MM.
 ON CONFLICT (mata_kuliah_id, dosen_id) DO NOTHING;
 
--- 6. Seeding KRS (Kontrak Kuliah Mahasiswa)
+-- 6. Seeding KRS (Kontrak Kuliah Mahasiswa) — 12 mahasiswa contoh ikut ke-4 mata
+-- kuliah seed di atas. Didaftarkan langsung per mata_kuliah_id, bukan lewat
+-- pencocokan kelas, karena kepesertaan memang di tabel krs ini.
 INSERT INTO krs (mahasiswa_nim, mata_kuliah_id)
-SELECT m.nim, mk.id 
-FROM mahasiswa m 
+SELECT m.nim, mk.id
+FROM mahasiswa m
 CROSS JOIN mata_kuliah mk
-WHERE m.kelas = '1C'
+WHERE mk.id IN (1, 2, 3, 4)
 ON CONFLICT (mahasiswa_nim, mata_kuliah_id) DO NOTHING;
 
 -- 7. Seeding Pertemuan (16 Pertemuan per Mata Kuliah)
