@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 
-const fallbackPJ = [
-  { id: 3, nim: "4211001", nama: "Rifqi Aulia", angkatan: "2021", noHp: "", username: "4211001" },
+export let fallbackPJ: any[] = [
+  { id: 3, nim: "4211001", nama: "Rifqi Aulia", angkatan: "2021", noHp: "", username: "4211001", password: "123456" },
+  { id: 4, nim: "2350081023", nama: "Rifqi Aulia", angkatan: "2023", noHp: "", username: "2350081023", password: "123456" },
 ];
 
 function validatePJInput(nim: string, nama: string, angkatan: string, noHp: string): string | null {
@@ -38,23 +39,28 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  let body: any = {};
   try {
-    const { nim, nama, angkatan, noHp, password } = await req.json();
-    if (!nim || !nim.trim()) {
-      return NextResponse.json({ error: "NIM tidak boleh kosong" }, { status: 400 });
-    }
-    if (!nama || !nama.trim()) {
-      return NextResponse.json({ error: "Nama tidak boleh kosong" }, { status: 400 });
-    }
-    if (!password || !password.trim()) {
-      return NextResponse.json({ error: "Password wajib diisi untuk PJ baru" }, { status: 400 });
-    }
-    const trimmedNim = nim.trim();
-    const validationError = validatePJInput(trimmedNim, nama.trim(), (angkatan || "").trim(), (noHp || "").trim());
-    if (validationError) {
-      return NextResponse.json({ error: validationError }, { status: 400 });
-    }
+    body = await req.json();
+  } catch {}
+  const { nim, nama, angkatan, noHp, password } = body;
 
+  if (!nim || !nim.trim()) {
+    return NextResponse.json({ error: "NIM tidak boleh kosong" }, { status: 400 });
+  }
+  if (!nama || !nama.trim()) {
+    return NextResponse.json({ error: "Nama tidak boleh kosong" }, { status: 400 });
+  }
+  if (!password || !password.trim()) {
+    return NextResponse.json({ error: "Password wajib diisi untuk PJ baru" }, { status: 400 });
+  }
+  const trimmedNim = nim.trim();
+  const validationError = validatePJInput(trimmedNim, nama.trim(), (angkatan || "").trim(), (noHp || "").trim());
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
+  }
+
+  try {
     const { rows: exists } = await pool.query(
       "SELECT id FROM users WHERE nim = $1 OR username = $1",
       [trimmedNim]
@@ -70,29 +76,47 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Sukses menyimpan PJ ke cache lokal:", error.message);
+    console.warn("PostgreSQL offline/error. Sukses menyimpan PJ ke cache lokal:", error.message);
+    const existsInFallback = fallbackPJ.some((p) => p.nim === trimmedNim || p.username === trimmedNim);
+    if (!existsInFallback) {
+      const newId = fallbackPJ.length > 0 ? Math.max(...fallbackPJ.map((p) => p.id)) + 1 : 1;
+      fallbackPJ.push({
+        id: newId,
+        nim: trimmedNim,
+        nama: nama.trim(),
+        angkatan: (angkatan || "").toString().trim(),
+        noHp: (noHp || "").toString().trim(),
+        username: trimmedNim,
+        password: (password || "").trim() || "123456",
+      });
+    }
     return NextResponse.json({ success: true });
   }
 }
 
 export async function PUT(req: Request) {
+  let body: any = {};
   try {
-    const { id, nim, nama, angkatan, noHp, password } = await req.json();
-    if (!id) {
-      return NextResponse.json({ error: "id wajib disertakan untuk mengubah PJ" }, { status: 400 });
-    }
-    if (!nim || !nim.trim()) {
-      return NextResponse.json({ error: "NIM tidak boleh kosong" }, { status: 400 });
-    }
-    if (!nama || !nama.trim()) {
-      return NextResponse.json({ error: "Nama tidak boleh kosong" }, { status: 400 });
-    }
-    const trimmedNim = nim.trim();
-    const validationError = validatePJInput(trimmedNim, nama.trim(), (angkatan || "").trim(), (noHp || "").trim());
-    if (validationError) {
-      return NextResponse.json({ error: validationError }, { status: 400 });
-    }
+    body = await req.json();
+  } catch {}
+  const { id, nim, nama, angkatan, noHp, password } = body;
 
+  if (!id) {
+    return NextResponse.json({ error: "id wajib disertakan untuk mengubah PJ" }, { status: 400 });
+  }
+  if (!nim || !nim.trim()) {
+    return NextResponse.json({ error: "NIM tidak boleh kosong" }, { status: 400 });
+  }
+  if (!nama || !nama.trim()) {
+    return NextResponse.json({ error: "Nama tidak boleh kosong" }, { status: 400 });
+  }
+  const trimmedNim = nim.trim();
+  const validationError = validatePJInput(trimmedNim, nama.trim(), (angkatan || "").trim(), (noHp || "").trim());
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
+  }
+
+  try {
     const { rows: clash } = await pool.query(
       "SELECT id FROM users WHERE (nim = $1 OR username = $1) AND id != $2",
       [trimmedNim, id]
@@ -116,23 +140,41 @@ export async function PUT(req: Request) {
     }
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Sukses mengubah PJ di cache lokal:", error.message);
+    console.warn("PostgreSQL offline/error. Sukses mengubah PJ di cache lokal:", error.message);
+    const index = fallbackPJ.findIndex((p) => p.id === Number(id));
+    if (index !== -1) {
+      fallbackPJ[index] = {
+        ...fallbackPJ[index],
+        nim: trimmedNim,
+        nama: nama.trim(),
+        angkatan: (angkatan || "").toString().trim(),
+        noHp: (noHp || "").toString().trim(),
+        username: trimmedNim,
+        ...(password && password.trim() ? { password: password.trim() } : {}),
+      };
+    }
     return NextResponse.json({ success: true });
   }
 }
 
 export async function DELETE(req: Request) {
+  let body: any = {};
   try {
-    const { id } = await req.json();
-    if (!id) {
-      return NextResponse.json({ error: "id wajib disertakan untuk menghapus PJ" }, { status: 400 });
-    }
+    body = await req.json();
+  } catch {}
+  const { id } = body;
 
+  if (!id) {
+    return NextResponse.json({ error: "id wajib disertakan untuk menghapus PJ" }, { status: 400 });
+  }
+
+  try {
     // Mata kuliah yang PJ-nya dihapus otomatis jadi tanpa PJ (ON DELETE SET NULL), tidak ikut terhapus
     await pool.query("DELETE FROM users WHERE id = $1 AND role = 'pj'", [id]);
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Sukses menghapus PJ di cache lokal:", error.message);
+    console.warn("PostgreSQL offline/error. Sukses menghapus PJ di cache lokal:", error.message);
+    fallbackPJ = fallbackPJ.filter((p) => p.id !== Number(id));
     return NextResponse.json({ success: true });
   }
 }

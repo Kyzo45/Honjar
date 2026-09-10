@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { fmtTgl } from "@/lib/format";
+import { fmtTgl, formatWAUrl } from "@/lib/format";
 import type { KuliahRow, MataKuliah } from "@/lib/types";
+import ReminderModal from "@/components/ReminderModal";
 
 const HARI_URUT = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
@@ -26,8 +28,20 @@ function inputTerakhir(m: MataKuliah): string | null {
   return tanggal.reduce((a, b) => (a > b ? a : b));
 }
 
+function buildWAMessageSingle(m: MataKuliah, pjNama: string): string {
+  const unfilled = m.rows.filter((r) => r.tipe === "kuliah" && !r.topik).length;
+  return (
+    `Halo Sdr/i *${pjNama}*,\n\n` +
+    `Terdapat *${unfilled} pertemuan* yang belum diisi berita acaranya pada mata kuliah ` +
+    `*${m.nama}* (Kelas ${m.kelas}).\n\n` +
+    `Mohon segera mengisi melalui sistem HONJAR UNJANI. Batas pengisian maks. 1 bulan setelah tanggal kuliah.\n\n` +
+    `Terima kasih. 🙏\n_— Admin Prodi TLM UNJANI_`
+  );
+}
+
 export default function MonitorView() {
-  const { courses } = useApp();
+  const { courses, pjList } = useApp();
+  const [showReminder, setShowReminder] = useState(false);
 
   return (
     <section className="view">
@@ -41,19 +55,24 @@ export default function MonitorView() {
       <div className="panel">
         <div className="panel-h">
           <h2>Kelengkapan berita acara</h2>
-          <div className="right"><button className="btn btn-sm">Kirim pengingat ke Penanggung Jawab</button></div>
+          <div className="right">
+            <button className="btn btn-sm btn-p" onClick={() => setShowReminder(true)}>
+              💬 Kirim Pengingat ke Penanggung Jawab
+            </button>
+          </div>
           <p>Baris bertanda kuning berarti tanggal atau jam menyimpang dari jadwal induk.</p>
         </div>
         <table className="plain">
           <thead>
             <tr>
               <th>Mata kuliah</th><th>Kelas</th><th>Penanggung Jawab</th><th>Progres</th>
-              <th>Input terakhir</th><th>Anomali</th>
+              <th>Input terakhir</th><th>Anomali</th><th></th>
             </tr>
           </thead>
           <tbody>
             {courses.map((m) => {
               const isi = m.rows.filter((r) => r.tipe === "kuliah" && r.topik).length;
+              const unfilled = 14 - isi;
               const pct = Math.round((isi / 14) * 100);
               const menyimpang = hitungMenyimpang(m);
               const terakhir = inputTerakhir(m);
@@ -62,6 +81,13 @@ export default function MonitorView() {
                 isi === 0 ? <span className="tag t-off">Belum ada input</span> :
                 <span style={{ color: "var(--ink-3)" }}>—</span>;
               const barColor = pct >= 80 ? "var(--verd)" : pct >= 50 ? "var(--amber)" : "var(--rose)";
+
+              // Cari nomor HP PJ untuk link WA langsung per baris
+              const pjData = pjList.find((p) => p.id === m.pjId);
+              const noHp = pjData?.noHp || "";
+              const waMsg = buildWAMessageSingle(m, m.pj);
+              const waUrl = formatWAUrl(noHp, waMsg);
+
               return (
                 <tr key={m.id}>
                   <td><b>{m.nama}</b><br /><span className="num" style={{ fontSize: 11, color: "var(--ink-3)" }}>{m.kode}</span></td>
@@ -73,12 +99,34 @@ export default function MonitorView() {
                   </td>
                   <td className="num" style={{ fontSize: 12.5 }}>{terakhir ? fmtTgl(terakhir).split(", ")[1] : "—"}</td>
                   <td>{anom}</td>
+                  <td>
+                    {unfilled > 0 && (
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-sm"
+                        style={{ textDecoration: "none", whiteSpace: "nowrap" }}
+                        title={`Kirim pengingat WA ke ${m.pj}`}
+                      >
+                        💬 WA
+                      </a>
+                    )}
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {showReminder && (
+        <ReminderModal
+          courses={courses}
+          pjList={pjList}
+          onClose={() => setShowReminder(false)}
+        />
+      )}
     </section>
   );
 }
