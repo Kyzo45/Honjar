@@ -414,9 +414,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input)
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ success: false, error: "Terjadi kesalahan pada respon server" }));
       if (data.success) {
-        const fresh = await fetch("/api/pj").then((r) => r.json());
+        const fresh = await fetch("/api/pj").then((r) => r.json()).catch(() => null);
         if (Array.isArray(fresh)) setPjList(fresh);
         showToast("success", "Penanggung Jawab berhasil ditambahkan.");
         return { success: true };
@@ -438,9 +438,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...input })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ success: false, error: "Terjadi kesalahan pada respon server" }));
       if (data.success) {
-        const fresh = await fetch("/api/pj").then((r) => r.json());
+        const fresh = await fetch("/api/pj").then((r) => r.json()).catch(() => null);
         if (Array.isArray(fresh)) setPjList(fresh);
         showToast("success", "Perubahan Penanggung Jawab berhasil disimpan.");
         return { success: true };
@@ -462,7 +462,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ success: false, error: "Terjadi kesalahan pada respon server" }));
       if (data.success) {
         setPjList((prev) => prev.filter((p) => p.id !== id));
         showToast("success", "Penanggung Jawab berhasil dihapus.");
@@ -485,7 +485,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input)
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ success: false, error: "Respons server tidak valid." }));
       if (data.success) {
         const [fresh, freshC] = await Promise.all([
           fetch("/api/mahasiswa").then((r) => r.json()),
@@ -513,7 +513,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...input, nim })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ success: false, error: "Respons server tidak valid." }));
       if (data.success) {
         const [fresh, freshC] = await Promise.all([
           fetch("/api/mahasiswa").then((r) => r.json()),

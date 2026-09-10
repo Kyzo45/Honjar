@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-const fallbackLecturers = [
+let fallbackLecturers = [
   { id: 1, nid: "DSN0001", nama: "Dr. Arina Novilla, M.Kes.", status: "tetap" },
   { id: 2, nid: "DSN0002", nama: "M. Ratna Ningrum, M.Si.", status: "tetap" },
   { id: 3, nid: "DSN0003", nama: "Taufik Gunawan, S.Tr.Kes.", status: "tetap" },
@@ -53,7 +53,19 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Sukses menyimpan dosen ke cache lokal:", error.message);
+    console.warn("PostgreSQL offline/error. Sukses menyimpan dosen ke cache lokal:", error.message);
+    const { nid, nama, status } = await req.clone().json().catch(() => ({}));
+    const trimmedNid = (nid || "").toString().trim();
+    const trimmedNama = (nama || "").toString().trim();
+    if (trimmedNid && trimmedNama) {
+      const maxId = fallbackLecturers.length > 0 ? Math.max(...fallbackLecturers.map((l) => l.id)) : 0;
+      fallbackLecturers.push({
+        id: maxId + 1,
+        nid: trimmedNid,
+        nama: trimmedNama,
+        status: normalizeStatus(status) || "tetap",
+      });
+    }
     return NextResponse.json({ success: true });
   }
 }
@@ -91,7 +103,17 @@ export async function PUT(req: Request) {
     );
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Sukses mengubah dosen di cache lokal:", error.message);
+    console.warn("PostgreSQL offline/error. Sukses mengubah dosen di cache lokal:", error.message);
+    const { id, nid, nama, status } = await req.clone().json().catch(() => ({}));
+    const idx = fallbackLecturers.findIndex((l) => l.id === Number(id));
+    if (idx !== -1) {
+      fallbackLecturers[idx] = {
+        id: Number(id),
+        nid: (nid || "").toString().trim(),
+        nama: (nama || "").toString().trim(),
+        status: normalizeStatus(status) || "tetap",
+      };
+    }
     return NextResponse.json({ success: true });
   }
 }
@@ -106,7 +128,11 @@ export async function DELETE(req: Request) {
     await pool.query("DELETE FROM dosen WHERE id = $1", [id]);
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Sukses menghapus dosen di cache lokal:", error.message);
+    console.warn("PostgreSQL offline/error. Sukses menghapus dosen di cache lokal:", error.message);
+    const { id } = await req.clone().json().catch(() => ({}));
+    if (id) {
+      fallbackLecturers = fallbackLecturers.filter((l) => l.id !== Number(id));
+    }
     return NextResponse.json({ success: true });
   }
 }
