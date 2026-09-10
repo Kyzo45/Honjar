@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { execFile } from "child_process";
-import fs from "fs";
-import path from "path";
 import pool from "@/lib/db";
+import { generateHonorExcel } from "@/lib/generateExcel";
 
 function formatDate(date: any): string | undefined {
   if (!date) return undefined;
@@ -104,37 +102,11 @@ export async function POST(req: Request) {
       rows: rows
     };
 
-    // Jalankan skrip Python untuk menghasilkan berkas Excel
-    const scriptPath = path.join(process.cwd(), "src", "lib", "generate_excel.py");
-    
-    const excelFile: string = await new Promise((resolve, reject) => {
-      const pyProcess = execFile("python", [scriptPath], (error, stdout, stderr) => {
-        if (error) {
-          console.error("Python Exec Error:", stderr);
-          reject(error);
-        } else {
-          resolve(stdout.trim());
-        }
-      });
-      
-      pyProcess.stdin?.write(JSON.stringify(payload));
-      pyProcess.stdin?.end();
-    });
-
-    if (!fs.existsSync(excelFile)) {
-      throw new Error("Berkas Excel hasil generate tidak ditemukan di disk");
-    }
-
-    const fileBuffer = fs.readFileSync(excelFile);
-    
-    // Hapus temp file secara asinkronus setelah dibaca
-    fs.unlink(excelFile, (err) => {
-      if (err) console.error("Gagal menghapus temp excel file:", err);
-    });
-
+    const fileBuffer = await generateHonorExcel(payload);
     const filename = `Rekap_Honor_Mengajar_${(monthName || "Semua_Periode").replace(/\s+/g, "_")}.xlsx`;
+    const uint8 = new Uint8Array(fileBuffer);
 
-    return new Response(fileBuffer, {
+    return new Response(uint8, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="${filename}"`
