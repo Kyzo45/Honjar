@@ -30,3 +30,21 @@ export function daysBetween(a: string, b: string): number {
   const utcB = Date.UTC(by, bm - 1, bd);
   return Math.round((utcB - utcA) / 86400000);
 }
+
+// Konversi nomor HP Indonesia ke format internasional (mis. 08123 -> 628123)
+export function formatWANumber(noHp: string): string {
+  const digits = (noHp || "").replace(/\D/g, "");
+  if (digits.startsWith("0")) return "62" + digits.slice(1);
+  if (digits.startsWith("62")) return digits;
+  return digits ? "62" + digits : "";
+}
+
+// Buat URL wa.me / api.whatsapp.com dengan nomor hp dan pesan ter-encode
+export function formatWAUrl(noHp: string, message: string): string {
+  const phone = formatWANumber(noHp);
+  const text = encodeURIComponent(message);
+  return phone
+    ? `https://api.whatsapp.com/send?phone=${phone}&text=${text}`
+    : `https://api.whatsapp.com/send?text=${text}`;
+}
+

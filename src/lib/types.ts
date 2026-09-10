@@ -160,3 +160,17 @@ export interface NewCourseInput {
   // lalu mendaftarkannya ke KRS mata kuliah ini.
   newRoster?: { nim: string; nama: string; angkatan: string }[];
 }
+
+export interface ReminderTarget {
+  pjId: number | null;
+  pjNama: string;
+  noHp: string;
+  courses: {
+    kode: string;
+    nama: string;
+    kelas: string;
+    filledCount: number;
+    unfilledCount: number;
+  }[];
+}
+

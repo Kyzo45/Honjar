@@ -56,7 +56,7 @@ function CourseCard({ m }: { m: MataKuliah }) {
 }
 
 export default function MkView() {
-  const { courses, semesterFilter } = useApp();
+  const { courses, semesterFilter, role } = useApp();
   const total = courses.reduce((sum, m) => sum + courseIsi(m), 0);
   const totalSks = courses.reduce((sum, m) => sum + (parseInt(m.sks) || 0), 0);
   const belumDiisi = courses.reduce(
@@ -80,8 +80,50 @@ export default function MkView() {
     });
   }, [courses, query, semesterFilter]);
 
+  // Kumpulkan detail kelas yang belum terisi untuk banner PJ
+  const tunggakanPJ = useMemo(() => {
+    if (role !== "pj") return [];
+    return courses
+      .map((m) => {
+        const unfilled = m.rows.filter((r) => r.tipe === "kuliah" && !r.topik).length;
+        return unfilled > 0 ? { nama: m.nama, kelas: m.kelas, unfilled } : null;
+      })
+      .filter(Boolean) as { nama: string; kelas: string; unfilled: number }[];
+  }, [courses, role]);
+
   return (
     <section className="view">
+      {/* Banner pengingat berita acara — hanya tampil untuk PJ yang memiliki tunggakan */}
+      {role === "pj" && tunggakanPJ.length > 0 && (
+        <div style={{
+          background: "color-mix(in srgb, var(--amber) 12%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--amber) 40%, transparent)",
+          borderRadius: "var(--r)",
+          padding: "14px 18px",
+          display: "flex",
+          gap: "12px",
+          alignItems: "flex-start",
+        }}>
+          <span style={{ fontSize: "20px", lineHeight: 1.3 }}>⚠️</span>
+          <div>
+            <b style={{ color: "var(--ink-1)", fontSize: "14px" }}>
+              Anda memiliki {tunggakanPJ.reduce((s, t) => s + t.unfilled, 0)} pertemuan yang belum diisi berita acaranya:
+            </b>
+            <ul style={{ margin: "6px 0 0", paddingLeft: "18px", fontSize: "13px", color: "var(--ink-2)" }}>
+              {tunggakanPJ.map((t) => (
+                <li key={t.nama + t.kelas}>
+                  {t.nama} <span style={{ color: "var(--ink-3)" }}>(Kelas {t.kelas})</span>{" "}
+                  — <b style={{ color: "var(--rose)" }}>{t.unfilled} pertemuan</b>
+                </li>
+              ))}
+            </ul>
+            <p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--ink-3)" }}>
+              Batas pengisian maksimal 1 bulan setelah tanggal perkuliahan. Klik kartu mata kuliah untuk mengisi.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="cards">
         <div className="stat"><dt>Pertemuan tercatat</dt><dd>{total}<small>/{courses.length * 14}</small></dd></div>
         <div className="stat"><dt>Pertemuan belum diisi</dt><dd>{belumDiisi}</dd></div>
