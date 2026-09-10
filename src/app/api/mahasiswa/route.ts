@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-const fallbackMahasiswa = [
+let fallbackMahasiswa = [
   { nim: "4211001", nama: "Adinda Pramesti", angkatan: "2021" },
   { nim: "4211002", nama: "Bagas Nurwahid", angkatan: "2021" },
 ];
+
+function isDbUnavailableError(error: any): boolean {
+  const message = String(error?.message ?? "");
+  return /ECONNREFUSED|ENOTFOUND|timeout|connect/i.test(message) || error?.code === "ECONNREFUSED";
+}
+
+function isDbAuthError(error: any): boolean {
+  const message = String(error?.message ?? "");
+  return /password authentication failed|invalid password|authentication failed|28P01|28P00/i.test(message);
+}
 
 function validateMahasiswaInput(nim: string, nama: string, angkatan: string): string | null {
   if (!nim) return "NIM tidak boleh kosong";
@@ -56,7 +66,24 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Sukses menyimpan mahasiswa ke cache lokal:", error.message);
+    console.error("PostgreSQL error saat menambah mahasiswa:", error);
+
+    if (isDbAuthError(error)) {
+      return NextResponse.json({ error: "Koneksi database gagal: kredensial PostgreSQL tidak valid." }, { status: 500 });
+    }
+    if (!isDbUnavailableError(error)) {
+      return NextResponse.json({ error: "Gagal menyimpan mahasiswa: " + (error?.message || "database error") }, { status: 500 });
+    }
+
+    const { nim, nama, angkatan } = await req.clone().json().catch(() => ({}));
+    const trimmedNim = (nim || "").toString().trim();
+    const trimmedNama = (nama || "").toString().trim();
+    if (trimmedNim && trimmedNama) {
+      const idx = fallbackMahasiswa.findIndex((m) => m.nim === trimmedNim);
+      if (idx === -1) {
+        fallbackMahasiswa.push({ nim: trimmedNim, nama: trimmedNama, angkatan: (angkatan || "").toString().trim() });
+      }
+    }
     return NextResponse.json({ success: true });
   }
 }
@@ -88,7 +115,25 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Sukses mengubah mahasiswa di cache lokal:", error.message);
+    console.error("PostgreSQL error saat mengubah mahasiswa:", error);
+
+    if (isDbAuthError(error)) {
+      return NextResponse.json({ error: "Koneksi database gagal: kredensial PostgreSQL tidak valid." }, { status: 500 });
+    }
+    if (!isDbUnavailableError(error)) {
+      return NextResponse.json({ error: "Gagal mengubah mahasiswa: " + (error?.message || "database error") }, { status: 500 });
+    }
+
+    const { nim, nama, angkatan } = await req.clone().json().catch(() => ({}));
+    const trimmedNim = (nim || "").toString().trim();
+    const idx = fallbackMahasiswa.findIndex((m) => m.nim === trimmedNim);
+    if (idx !== -1) {
+      fallbackMahasiswa[idx] = {
+        nim: trimmedNim,
+        nama: (nama || "").toString().trim(),
+        angkatan: (angkatan || "").toString().trim(),
+      };
+    }
     return NextResponse.json({ success: true });
   }
 }
@@ -104,7 +149,19 @@ export async function DELETE(req: Request) {
     await pool.query("DELETE FROM mahasiswa WHERE nim = $1", [nim]);
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.warn("PostgreSQL offline. Sukses menghapus mahasiswa di cache lokal:", error.message);
+    console.error("PostgreSQL error saat menghapus mahasiswa:", error);
+
+    if (isDbAuthError(error)) {
+      return NextResponse.json({ error: "Koneksi database gagal: kredensial PostgreSQL tidak valid." }, { status: 500 });
+    }
+    if (!isDbUnavailableError(error)) {
+      return NextResponse.json({ error: "Gagal menghapus mahasiswa: " + (error?.message || "database error") }, { status: 500 });
+    }
+
+    const { nim } = await req.clone().json().catch(() => ({}));
+    if (nim) {
+      fallbackMahasiswa = fallbackMahasiswa.filter((m) => m.nim !== (nim || "").toString().trim());
+    }
     return NextResponse.json({ success: true });
   }
 }

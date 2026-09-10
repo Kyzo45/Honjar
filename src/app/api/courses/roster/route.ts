@@ -50,7 +50,11 @@ export async function POST(req: Request) {
     }
   } catch (error: any) {
     console.error("Gagal menambahkan mahasiswa ke mata kuliah:", error);
-    return NextResponse.json({ error: "Gagal menambahkan mahasiswa: " + error.message }, { status: 500 });
+    const message = String(error?.message || "");
+    if (/password authentication failed|invalid password|authentication failed|28P01|28P00/i.test(message)) {
+      return NextResponse.json({ error: "Koneksi database gagal: kredensial PostgreSQL tidak valid." }, { status: 500 });
+    }
+    return NextResponse.json({ error: "Gagal menambahkan mahasiswa: " + message }, { status: 500 });
   }
 }
 

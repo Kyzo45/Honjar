@@ -4,6 +4,10 @@ import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import PJFormModal from "@/components/PJFormModal";
 import type { PJUser } from "@/lib/types";
+import { formatWAUrl } from "@/lib/format";
+
+const DEFAULT_WA_MSG = (pj: PJUser) =>
+  `Halo Sdr/i *${pj.nama}*,\n\nSaya dari Admin Prodi TLM UNJANI menghubungi Anda terkait tugas sebagai Penanggung Jawab kelas.\n\nTerima kasih. 🙏\n_— Admin Prodi TLM UNJANI_`;
 
 export default function PJView() {
   const { pjList, addPJ, updatePJ, deletePJ } = useApp();
@@ -76,6 +80,16 @@ export default function PJView() {
                   <td>{p.noHp || "—"}</td>
                   <td className="num">{p.username}</td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <a
+                      href={formatWAUrl(p.noHp, DEFAULT_WA_MSG(p))}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-sm"
+                      style={{ textDecoration: "none", marginRight: "4px" }}
+                      title={p.noHp ? `Chat WA: ${p.noHp}` : "Kirim WA (tanpa nomor HP)"}
+                    >
+                      💬
+                    </a>
                     <button className="btn btn-sm" onClick={() => setEditingPJ(p)}>Ubah</button>{" "}
                     <button
                       className="btn btn-sm"
