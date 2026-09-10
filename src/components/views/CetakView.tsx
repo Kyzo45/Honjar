@@ -32,7 +32,14 @@ function CoursePage({ m }: CoursePageProps) {
         <div>
           <b>Tingkat / semester</b> : {m.kelas} / Semester {m.semester}<br />
           <b>Semester / T.A.</b> : Genap 2025/2026<br />
-          <b>Dosen</b> : {m.dosen.join(" · ")}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
+            <b style={{ whiteSpace: "nowrap" }}>Dosen</b> :
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+              {(m.dosen && m.dosen.length ? m.dosen : ["-"]).map((dosen: string, idx: number) => (
+                <span key={`${dosen}-${idx}`}>{dosen}</span>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       <table>
