@@ -173,25 +173,26 @@ export default function CetakView() {
         clone.style.background = "none";
         clone.style.padding = "0";
         clone.style.boxShadow = "none";
+        clone.style.display = "block";
 
         const pages = clone.querySelectorAll(".page");
         pages.forEach((p: any) => {
           p.style.boxShadow = "none";
-          p.style.margin = "0";
+          p.style.margin = "0 0 18px";
           p.style.maxWidth = "100%";
           p.style.width = "100%";
           p.style.minWidth = "initial";
           p.style.padding = "0";
+          p.style.display = "block";
           p.style.pageBreakAfter = "always";
           p.style.breakAfter = "page";
         });
 
         const opt = {
-          margin:       [15, 15, 15, 15] as [number, number, number, number],
-          filename:     query.trim() ? `Berita_Acara_${query.trim().replace(/\s+/g, "_")}.pdf` : `Berita_Acara_Semua_Kelas.pdf`,
-          image:        { type: 'jpeg' as const, quality: 0.98 },
-          html2canvas:  { scale: 2.2, useCORS: true, logging: false },
-          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+        margin:       [10, 10, 10, 10] as [number, number, number, number],
+        filename:     query.trim() ? `Berita_Acara_${query.trim().replace(/\s+/g, "_")}.pdf` : `Berita_Acara_Semua_Kelas.pdf`,
+        image:        { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas:  { scale: 2.1, useCORS: true, logging: false },
           pagebreak:    { mode: ['css', 'legacy'] }
         };
 
