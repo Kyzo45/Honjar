@@ -74,7 +74,7 @@ const DEFAULT_MK: MataKuliah = {
   pjId: null,
   rows: [],
   tipe: "Teori",
-  semester: 2,
+  semester: 1,
   hari: "—",
   jamMulai: "00:00",
   jamSelesai: "00:00",

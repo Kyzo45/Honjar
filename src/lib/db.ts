@@ -1,13 +1,16 @@
 import { Pool } from "pg";
 
-const isProd = process.env.NODE_ENV === "production";
 const connectionString = process.env.DATABASE_URL || process.env.DB_URL;
+const isLocalDatabase = (value?: string) =>
+  !value || /localhost|127\.0\.0\.1|postgresql:\/\/.*(docker|host\.internal)/i.test(value);
 
 const pool = new Pool(
   connectionString
     ? {
         connectionString,
-        ssl: isProd ? { rejectUnauthorized: false } : undefined,
+        ssl: isLocalDatabase(connectionString)
+          ? false
+          : { rejectUnauthorized: false },
       }
     : {
         host: process.env.DB_HOST || "localhost",

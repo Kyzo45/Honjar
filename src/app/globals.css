@@ -389,16 +389,20 @@ textarea{resize:vertical;min-height:62px}
 }
 
 /* pdf preview */
-.pdfbox{background:var(--rule-soft);padding:22px;display:flex;justify-content:center}
+.pdfbox{background:var(--rule-soft);padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px}
 .page{
-  background:#fff;width:100%;max-width:640px;padding:26px 28px;
+  background:#fff;width:100%;max-width:640px;padding:18px 20px 12px;
   box-shadow:0 2px 12px rgba(22,35,61,.14);font-size:11px;
-  /* Rasio area konten A4 (210x297mm dikurangi margin cetak 15mm tiap sisi di
-     opsi html2pdf) supaya tabel pertemuan meregang mengisi satu halaman penuh,
-     bukan menyisakan banyak ruang kosong di bawah seperti sebelumnya. */
-  aspect-ratio: 180 / 267;
+  min-height: 0;
   display:flex;flex-direction:column;box-sizing:border-box;
+  page-break-after: always;
+  break-after: page;
 }
+.page table{width:100%;border-collapse:collapse;font-size:9.5px;flex:1;min-height:0}
+.page .page-kop{margin-bottom:8px}
+.page h4{margin:0 0 8px}
+.page-meta{margin-bottom:8px}
+
 .page-kop {
   display: flex;
   align-items: center;

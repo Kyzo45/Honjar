@@ -1,17 +1,78 @@
 import { NextResponse } from "next/server";
-import { execFile } from "child_process";
-import fs from "fs";
-import os from "os";
-import path from "path";
+import ExcelJS from "exceljs";
 import pool from "@/lib/db";
 import type { ImportMahasiswaRow, ImportRowStatus } from "@/lib/types";
 
-// Menerima file Excel (multipart/form-data, field "file"), mem-parsing lewat skrip
-// Python (openpyxl), lalu mengembalikan preview baris tanpa menulis apapun ke
+const normalizeHeader = (value: unknown) => String(value ?? "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+
+const cellToText = (value: unknown) => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number" && Number.isInteger(value)) return String(value);
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).trim();
+};
+
+const findHeaderRow = (sheet: ExcelJS.Worksheet) => {
+  const maxScan = Math.min(30, sheet.rowCount || 0);
+  for (let row = 1; row <= maxScan; row += 1) {
+    for (let col = 1; col <= sheet.columnCount; col += 1) {
+      if (normalizeHeader(sheet.getCell(row, col).value) === "nim") {
+        return row;
+      }
+    }
+  }
+  return null;
+};
+
+const buildColumnMap = (sheet: ExcelJS.Worksheet, headerRow: number) => {
+  const map: Record<string, number> = {};
+  for (let col = 1; col <= sheet.columnCount; col += 1) {
+    const header = normalizeHeader(sheet.getCell(headerRow, col).value);
+    if (header === "nim") map.nim = col;
+    else if (header === "nama" || header === "namamahasiswa") map.nama = col;
+    else if (["angkatan", "angk", "angg", "thangkatan"].includes(header)) map.angkatan = col;
+  }
+  return map;
+};
+
+const parseStudentRowsFromWorkbook = async (file: File) => {
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(arrayBuffer);
+
+  const sheet = workbook.worksheets[0];
+  if (!sheet) {
+    throw new Error("Berkas Excel kosong atau tidak valid");
+  }
+
+  const headerRow = findHeaderRow(sheet);
+  if (!headerRow) {
+    throw new Error("Kolom NIM tidak ditemukan di berkas ini. Pastikan ada kolom berjudul 'NIM'.");
+  }
+
+  const colMap = buildColumnMap(sheet, headerRow);
+  if (!colMap.nim) {
+    throw new Error("Kolom NIM tidak ditemukan di berkas ini.");
+  }
+
+  const rows: { nim: string; nama: string; angkatan: string }[] = [];
+  for (let row = headerRow + 1; row <= sheet.rowCount; row += 1) {
+    const nim = cellToText(sheet.getCell(row, colMap.nim).value);
+    const nama = colMap.nama ? cellToText(sheet.getCell(row, colMap.nama).value) : "";
+    const angkatan = colMap.angkatan ? cellToText(sheet.getCell(row, colMap.angkatan).value) : "";
+
+    if (!nim && !nama) continue;
+    rows.push({ nim: nim.trim(), nama: nama.trim(), angkatan: angkatan.trim() });
+  }
+
+  return rows;
+};
+
+// Menerima file Excel (multipart/form-data, field "file"), mem-parsing lewat
+// ExcelJS di Node.js, lalu mengembalikan preview baris tanpa menulis apapun ke
 // database — konfirmasi baru dilakukan lewat /api/mahasiswa/import-commit, atau
 // (dari form mata kuliah) langsung disertakan ke payload simpan mata kuliah.
 export async function POST(req: Request) {
-  let tempPath: string | null = null;
   try {
     const formData = await req.formData();
     const file = formData.get("file");
@@ -19,42 +80,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Berkas Excel tidak ditemukan" }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    tempPath = path.join(os.tmpdir(), `honjar-import-${Date.now()}-${Math.random().toString(36).slice(2)}.xlsx`);
-    fs.writeFileSync(tempPath, buffer);
-
-    const scriptPath = path.join(process.cwd(), "src", "lib", "parse_mahasiswa_excel.py");
-    const stdout: string = await new Promise((resolve, reject) => {
-      execFile("python", [scriptPath, tempPath as string], (error, out, stderr) => {
-        if (error) {
-          // Skrip Python normalnya tetap keluar dengan kode 0 dan menaruh pesan
-          // error yang bisa dibaca pengguna di stdout (lihat parse_mahasiswa_excel.py).
-          // Tapi kalau tetap ada exit code bukan-0 (mis. python-nya sendiri tidak
-          // ketemu), coba dulu baca stdout siapa tahu tetap berisi JSON error yang
-          // berguna, baru jatuh ke stderr/pesan generik Node kalau memang kosong.
-          const fallback = (out || "").trim();
-          if (fallback) {
-            try {
-              JSON.parse(fallback);
-              resolve(fallback);
-              return;
-            } catch {
-              // bukan JSON valid, lanjut ke penanganan error di bawah
-            }
-          }
-          reject(new Error(stderr || error.message));
-        } else {
-          resolve(out.trim());
-        }
-      });
-    });
-
-    const parsed = JSON.parse(stdout);
-    if (parsed.error) {
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
-    }
-
-    const rawRows: { nim: string; nama: string; angkatan: string }[] = parsed.rows || [];
+    const rawRows = await parseStudentRowsFromWorkbook(file);
     if (rawRows.length === 0) {
       return NextResponse.json({ error: "Tidak ada baris data yang terbaca dari berkas ini" }, { status: 400 });
     }
@@ -106,9 +132,5 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Gagal membaca berkas Excel mahasiswa:", error);
     return NextResponse.json({ error: "Gagal membaca berkas Excel: " + error.message }, { status: 500 });
-  } finally {
-    if (tempPath) {
-      fs.unlink(tempPath, () => {});
-    }
   }
 }
