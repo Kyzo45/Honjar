@@ -26,7 +26,7 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
 
   // New Fields
   const [tipe, setTipe] = useState<"Teori" | "Praktikum">(course?.tipe || "Teori");
-  const [semester, setSemester] = useState(course?.semester ? course.semester.toString() : "2");
+  const [semester, setSemester] = useState(course?.semester ? course.semester.toString() : "1");
   const [hari, setHari] = useState(course?.hari || "Senin");
   const [jamMulai, setJamMulai] = useState(course?.jamMulai || "07:00");
   const [jamSelesai, setJamSelesai] = useState(course?.jamSelesai || "08:40");
