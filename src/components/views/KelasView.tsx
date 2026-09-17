@@ -61,7 +61,8 @@ export default function KelasView() {
       (c) =>
         c.nama.toLowerCase().includes(q) ||
         c.kode.toLowerCase().includes(q) ||
-        c.kelas.toLowerCase().includes(q)
+        c.kelas.toLowerCase().includes(q) ||
+        c.pj.toLowerCase().includes(q)
     );
   }, [sorted, query]);
 
@@ -99,6 +100,7 @@ export default function KelasView() {
               <tr>
                 <th>Mata Kuliah</th>
                 <th>Kelas</th>
+                <th>PJ</th>
                 <th>Jumlah mahasiswa</th>
                 <th></th>
               </tr>
@@ -108,6 +110,7 @@ export default function KelasView() {
                 <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => setSelectedId(c.id)}>
                   <td><b>{c.nama}</b> <span style={{ color: "var(--ink-3)", fontSize: "11.5px" }}>{c.kode}</span></td>
                   <td>{c.kelas}</td>
+                  <td>{c.pj || "—"}</td>
                   <td className="num">{c.roster.length}</td>
                   <td style={{ textAlign: "right" }}>
                     <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); setSelectedId(c.id); }}>Lihat detail</button>
@@ -116,7 +119,7 @@ export default function KelasView() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px" }}>
+                  <td colSpan={5} style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px" }}>
                     {sorted.length === 0 ? "Belum ada mata kuliah." : "Tidak ada mata kuliah yang cocok dengan pencarian."}
                   </td>
                 </tr>
@@ -215,6 +218,7 @@ function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => voi
                 <th>Ruangan</th>
                 <th>Koordinator</th>
                 <th>Dosen Pengampu</th>
+                <th>PJ</th>
               </tr>
             </thead>
             <tbody>
@@ -224,6 +228,7 @@ function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => voi
                 <td>{course.ruangan}</td>
                 <td>{course.koor}</td>
                 <td>{course.dosen.length > 0 ? course.dosen.join(", ") : "—"}</td>
+                <td>{course.pj || "—"}</td>
               </tr>
             </tbody>
           </table>
