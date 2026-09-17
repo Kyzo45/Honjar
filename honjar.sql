@@ -49,6 +49,9 @@ CREATE TABLE public.kehadiran_mahasiswa (
     CONSTRAINT kehadiran_mahasiswa_status_check CHECK (((status)::text = ANY ((ARRAY['hadir'::character varying, 'sakit'::character varying, 'izin'::character varying, 'tanpa'::character varying])::text[])))
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS kehadiran_mahasiswa_pertemuan_nim_unique
+    ON public.kehadiran_mahasiswa (pertemuan_id, mahasiswa_nim);
+
 CREATE SEQUENCE public.kehadiran_mahasiswa_id_seq
     AS integer
     START WITH 1
@@ -64,11 +67,17 @@ CREATE TABLE public.krs (
     mata_kuliah_id integer NOT NULL
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS krs_mahasiswa_mata_kuliah_unique
+    ON public.krs (mahasiswa_nim, mata_kuliah_id);
+
 CREATE TABLE public.mahasiswa (
     nim character varying(15) NOT NULL,
     nama character varying(100) NOT NULL,
     angkatan character varying(10)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS mahasiswa_nim_unique
+    ON public.mahasiswa (nim);
 
 CREATE TABLE public.mata_kuliah (
     id integer NOT NULL,
