@@ -28,21 +28,6 @@ export default function LoginView() {
     }
   };
 
-  const handleQuickLogin = async (user: string) => {
-    const pwd = user === "admin" ? "admin" : "pjra";
-    setUsername(user);
-    setPassword(pwd);
-    setError(null);
-    setSubmitting(true);
-
-    const res = await login(user, pwd);
-    setSubmitting(false);
-
-    if (!res.success) {
-      setError(res.error || "Gagal masuk");
-    }
-  };
-
   return (
     <div className="login-page">
       <div className="login-card">
@@ -88,17 +73,6 @@ export default function LoginView() {
           </button>
         </form>
 
-        <div className="demo-accounts">
-          <p>Akses Cepat Akun Demo (Sandi: admin / pjra):</p>
-          <div className="demo-buttons">
-            <button onClick={() => handleQuickLogin("admin")} className="btn-demo admin">
-              <span>admin</span> admin
-            </button>
-            <button onClick={() => handleQuickLogin("2350081070")} className="btn-demo pj">
-              <span>PJ Kelas</span> 2350081070
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

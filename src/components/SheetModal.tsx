@@ -205,12 +205,12 @@ export default function SheetModal({ course, row }: Props) {
                   onChange={(e) => { setTgl(e.target.value); if (tglError) { setTglError(false); setValidationMsg(null); } }} />
               </label>
               <label className="f"><span>Jam mulai</span>
-                <input type="time" value={mulai}
+                <input type="time" lang="id-ID" value={mulai}
                   style={jamError ? { borderColor: "var(--rose)" } : undefined}
                   onChange={(e) => { setMulai(e.target.value); if (jamError) { setJamError(false); setValidationMsg(null); } }} />
               </label>
               <label className="f"><span>Jam selesai</span>
-                <input type="time" value={selesai}
+                <input type="time" lang="id-ID" value={selesai}
                   style={jamError ? { borderColor: "var(--rose)" } : undefined}
                   onChange={(e) => { setSelesai(e.target.value); if (jamError) { setJamError(false); setValidationMsg(null); } }} />
               </label>
