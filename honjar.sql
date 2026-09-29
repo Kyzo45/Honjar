@@ -4,6 +4,7 @@
 DROP TABLE IF EXISTS kehadiran_mahasiswa CASCADE;
 DROP TABLE IF EXISTS pertemuan CASCADE;
 DROP TABLE IF EXISTS dosen_mata_kuliah CASCADE;
+DROP TABLE IF EXISTS mata_kuliah_pj CASCADE;
 DROP TABLE IF EXISTS krs CASCADE;
 DROP TABLE IF EXISTS mata_kuliah CASCADE;
 DROP TABLE IF EXISTS dosen CASCADE;
@@ -13,6 +14,7 @@ DROP TABLE IF EXISTS users CASCADE;
 DROP SEQUENCE IF EXISTS kehadiran_mahasiswa_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS pertemuan_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS mata_kuliah_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS mata_kuliah_pj_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS dosen_id_seq CASCADE;
 DROP SEQUENCE IF EXISTS users_id_seq CASCADE;
 
@@ -86,14 +88,20 @@ CREATE TABLE public.mata_kuliah (
     sks character varying(15) NOT NULL,
     kelas character varying(10) NOT NULL,
     semester integer NOT NULL,
-    tipe character varying(15) NOT NULL,
+    tipe character varying(20) NOT NULL,
     hari character varying(15) NOT NULL,
     jam_mulai time without time zone NOT NULL,
     jam_selesai time without time zone NOT NULL,
     ruangan character varying(50) NOT NULL,
     koordinator character varying(100) NOT NULL,
     pj_id integer,
-    CONSTRAINT mata_kuliah_tipe_check CHECK (((tipe)::text = ANY ((ARRAY['Teori'::character varying, 'Praktikum'::character varying])::text[])))
+    CONSTRAINT mata_kuliah_tipe_check CHECK (((tipe)::text = ANY ((ARRAY['Teori'::character varying, 'Praktikum'::character varying, 'Teori & Praktikum'::character varying])::text[])))
+);
+
+CREATE TABLE public.mata_kuliah_pj (
+    mata_kuliah_id integer NOT NULL,
+    pj_id integer NOT NULL,
+    CONSTRAINT mata_kuliah_pj_pkey PRIMARY KEY (mata_kuliah_id, pj_id)
 );
 
 CREATE SEQUENCE public.mata_kuliah_id_seq
@@ -105,6 +113,9 @@ CREATE SEQUENCE public.mata_kuliah_id_seq
     CACHE 1;
 
 ALTER SEQUENCE public.mata_kuliah_id_seq OWNED BY public.mata_kuliah.id;
+
+ALTER TABLE ONLY public.mata_kuliah
+    ADD CONSTRAINT mata_kuliah_pkey PRIMARY KEY (id);
 
 CREATE TABLE public.pertemuan (
     id integer NOT NULL,
@@ -123,7 +134,7 @@ CREATE TABLE public.pertemuan (
     jumlah_hadir_mhs integer DEFAULT 0,
     CONSTRAINT pertemuan_ke_check CHECK (((ke >= 1) AND (ke <= 16))),
     CONSTRAINT pertemuan_kehadiran_dosen_check CHECK (((kehadiran_dosen)::text = ANY ((ARRAY['hadir'::character varying, 'daring'::character varying, 'diganti'::character varying, 'batal'::character varying])::text[]))),
-    CONSTRAINT pertemuan_metode_check CHECK (((metode)::text = ANY ((ARRAY['Teori'::character varying, 'Praktikum'::character varying, 'Lapangan'::character varying])::text[]))),
+    CONSTRAINT pertemuan_metode_check CHECK (((metode)::text = ANY ((ARRAY['Teori'::character varying, 'Praktikum'::character varying])::text[]))),
     CONSTRAINT pertemuan_tipe_check CHECK (((tipe)::text = ANY ((ARRAY['kuliah'::character varying, 'uts'::character varying, 'uas'::character varying])::text[])))
 );
 
@@ -164,6 +175,18 @@ ALTER TABLE ONLY public.kehadiran_mahasiswa ALTER COLUMN id SET DEFAULT nextval(
 ALTER TABLE ONLY public.mata_kuliah ALTER COLUMN id SET DEFAULT nextval('public.mata_kuliah_id_seq'::regclass);
 ALTER TABLE ONLY public.pertemuan ALTER COLUMN id SET DEFAULT nextval('public.pertemuan_id_seq'::regclass);
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.mata_kuliah_pj
+    ADD CONSTRAINT mata_kuliah_pj_mata_kuliah_id_fkey
+    FOREIGN KEY (mata_kuliah_id) REFERENCES public.mata_kuliah(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.mata_kuliah_pj
+    ADD CONSTRAINT mata_kuliah_pj_pj_id_fkey
+    FOREIGN KEY (pj_id) REFERENCES public.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.mata_kuliah
+    ADD CONSTRAINT mata_kuliah_pj_id_fkey
+    FOREIGN KEY (pj_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 -- Optional seed data can be inserted later from the app or a separate script.
 -- Seed data for initial login and demo PJ user

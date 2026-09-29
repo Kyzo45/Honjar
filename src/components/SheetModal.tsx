@@ -5,13 +5,11 @@ import { useApp } from "@/context/AppContext";
 import { BATAS_INPUT_HARI, daysBetween, jamAjar, menit } from "@/lib/format";
 import type { Kehadiran, KuliahRow, MataKuliah, Metode, StatusMhs, AbsentRecord } from "@/lib/types";
 
-const METODE_OPTIONS: Metode[] = ["Teori", "Praktikum", "Lapangan"];
+const METODE_OPTIONS: Metode[] = ["Teori", "Praktikum"];
 
 const KEHADIRAN_OPTIONS: { value: Kehadiran; label: string }[] = [
   { value: "hadir", label: "Hadir di kelas" },
   { value: "daring", label: "Mengajar daring" },
-  { value: "diganti", label: "Digantikan dosen lain" },
-  { value: "batal", label: "Tidak terlaksana" },
 ];
 
 const STATUS_LABEL: Record<StatusMhs, string> = {
@@ -53,9 +51,15 @@ export default function SheetModal({ course, row }: Props) {
   // bukan pencocokan field kelas manapun.
   const roster = course.roster;
 
+  const normalizeTime = (value: string | undefined, fallback: string) => value && value !== "—" ? value : fallback;
+
   const [tgl, setTgl] = useState(row.tgl || todayISO());
-  const [mulai, setMulai] = useState(row.jam ? row.jam[0] : "14:40");
-  const [selesai, setSelesai] = useState(row.jam ? row.jam[1] : "16:20");
+  const [mulai, setMulai] = useState(
+    normalizeTime(row.jam?.[0], normalizeTime(course.jamMulai, "14:40"))
+  );
+  const [selesai, setSelesai] = useState(
+    normalizeTime(row.jam?.[1], normalizeTime(course.jamSelesai, "16:20"))
+  );
   const [metode, setMetode] = useState<Metode>(row.metode || "Teori");
   const [topik, setTopik] = useState(row.topik || "");
 
