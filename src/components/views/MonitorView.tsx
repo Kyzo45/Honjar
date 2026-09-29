@@ -82,11 +82,11 @@ export default function MonitorView() {
                 <span style={{ color: "var(--ink-3)" }}>—</span>;
               const barColor = pct >= 80 ? "var(--verd)" : pct >= 50 ? "var(--amber)" : "var(--rose)";
 
-              // Cari nomor HP PJ untuk link WA langsung per baris
-              const pjData = pjList.find((p) => p.id === m.pjId);
-              const noHp = pjData?.noHp || "";
-              const waMsg = buildWAMessageSingle(m, m.pj);
-              const waUrl = formatWAUrl(noHp, waMsg);
+              // Buat aksi WA terpisah agar setiap PJ yang ditugaskan dapat diingatkan.
+              const selectedPjIds = m.pjIds && m.pjIds.length > 0 ? m.pjIds : (m.pjId ? [m.pjId] : []);
+              const assignedPjs = selectedPjIds
+                .map((id) => pjList.find((p) => p.id === id))
+                .filter((pj) => pj !== undefined);
 
               return (
                 <tr key={m.id}>
@@ -100,18 +100,19 @@ export default function MonitorView() {
                   <td className="num" style={{ fontSize: 12.5 }}>{terakhir ? fmtTgl(terakhir).split(", ")[1] : "—"}</td>
                   <td>{anom}</td>
                   <td>
-                    {unfilled > 0 && (
+                    {unfilled > 0 && assignedPjs.map((pj) => (
                       <a
-                        href={waUrl}
+                        key={pj.id}
+                        href={formatWAUrl(pj.noHp || "", buildWAMessageSingle(m, pj.nama))}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="btn btn-sm"
-                        style={{ textDecoration: "none", whiteSpace: "nowrap" }}
-                        title={`Kirim pengingat WA ke ${m.pj}`}
+                        style={{ textDecoration: "none", whiteSpace: "nowrap", margin: "2px" }}
+                        title={`Kirim pengingat WA ke ${pj.nama}`}
                       >
-                        💬 WA
+                        💬 {pj.nama}
                       </a>
-                    )}
+                    ))}
                   </td>
                 </tr>
               );

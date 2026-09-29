@@ -29,7 +29,8 @@ export interface UserSession {
   kelas?: string;
 }
 
-export type Metode = "Teori" | "Praktikum" | "Lapangan";
+export type Metode = "Teori" | "Praktikum";
+export type MataKuliahTipe = "Teori" | "Praktikum" | "Teori & Praktikum";
 
 export type Kehadiran = "hadir" | "daring" | "diganti" | "batal";
 
@@ -83,8 +84,10 @@ export interface MataKuliah {
   roster: Mahasiswa[];
   pj: string;
   pjId: number | null;
+  pjIds: number[];
+  pjNames: string[];
   rows: Row[];
-  tipe: "Teori" | "Praktikum";
+  tipe: MataKuliahTipe;
   semester: number;
   hari: string;
   jamMulai: string;
@@ -149,7 +152,8 @@ export interface NewCourseInput {
   koor: string;
   dosen: string[];
   pjId: number | null;
-  tipe: "Teori" | "Praktikum";
+  pjIds?: number[];
+  tipe: MataKuliahTipe;
   semester: number;
   hari: string;
   jamMulai: string;

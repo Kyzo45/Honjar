@@ -72,6 +72,8 @@ const DEFAULT_MK: MataKuliah = {
   roster: [],
   pj: "—",
   pjId: null,
+  pjIds: [],
+  pjNames: [],
   rows: [],
   tipe: "Teori",
   semester: 1,
@@ -260,6 +262,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 3b. Ubah MK ke Database
   const updateCourse = async (id: number, input: NewCourseInput): Promise<{ success: boolean; error?: string }> => {
     // Optimistic Update
+    const selectedPjIds = input.pjIds && input.pjIds.length > 0 ? input.pjIds : input.pjId ? [input.pjId] : [];
+    const selectedPjNames = selectedPjIds
+      .map((id) => pjList.find((p) => p.id === id)?.nama)
+      .filter(Boolean) as string[];
+
     setCourses((prev) =>
       prev.map((c) =>
         c.id !== id
@@ -272,8 +279,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               sks: input.sks,
               koor: input.koor,
               dosen: input.dosen,
-              pj: pjList.find((p) => p.id === input.pjId)?.nama || "—",
-              pjId: input.pjId,
+              pj: selectedPjNames.join(", ") || "—",
+              pjId: selectedPjIds[0] ?? null,
+              pjIds: selectedPjIds,
+              pjNames: selectedPjNames,
               tipe: input.tipe,
               semester: input.semester,
               hari: input.hari,

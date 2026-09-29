@@ -110,6 +110,8 @@ export function buildInitialCourses(): MataKuliah[] {
     koor: m.koor, dosen: m.dosen, mhs: m.mhs, roster: [], pj: m.pj, pjId: null,
     rows: buildRows(m.koor, m.isi),
     tipe: m.tipe,
+    pjIds: m.pj ? [1] : [],
+    pjNames: m.pj ? [m.pj] : [],
     semester: m.semester,
     hari: m.hari,
     jamMulai: m.jamMulai,
