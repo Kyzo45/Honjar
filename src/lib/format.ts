@@ -9,6 +9,17 @@ export function fmtTgl(s: string): string {
   return `${HARI[d.getDay()]}, ${d.getDate()} ${BULAN[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+export function todayISO(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export function menit(a: string, b: string): number {
   const p = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
   return p(b) - p(a);

@@ -31,6 +31,7 @@ export default function HonorView() {
   const { courses, showToast } = useApp();
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedYear, setSelectedYear] = useState("all");
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   // Tahun yang tersedia dihitung dari tanggal pertemuan yang benar-benar ada di
   // data, bukan daftar tetap — otomatis mengikuti tahun ajaran berjalan, dan
@@ -70,32 +71,44 @@ export default function HonorView() {
   });
   rows.sort((x, y) => x.dsn.localeCompare(y.dsn) || x.tgl.localeCompare(y.tgl) || x.a.localeCompare(y.a));
 
-  let last: string | null = null, no = 0, jamTot = 0;
+  const grouped = new Map<string, HonorRow[]>();
+  rows.forEach((r) => {
+    const list = grouped.get(r.dsn) ?? [];
+    list.push(r);
+    grouped.set(r.dsn, list);
+  });
+
+  let no = 0, jamTot = 0;
   const body: React.ReactNode[] = [];
-  rows.forEach((r, i) => {
-    jamTot += r.jam;
-    if (r.dsn !== last) {
-      no++; last = r.dsn;
-      const sub = rows.filter((x) => x.dsn === r.dsn);
-      body.push(
-        <tr className="group" key={`g-${i}`}>
-          <td colSpan={10}>
-            {no}. {r.dsn}
-            <span>{sub.length} sesi · {sub.reduce((a, b) => a + b.jam, 0)} jam</span>
-          </td>
-        </tr>
-      );
-    }
+  grouped.forEach((sub, dsn) => {
+    no++;
+    const totalJam = sub.reduce((sum, item) => sum + item.jam, 0);
     body.push(
-      <tr key={i}>
-        <td></td>
-        <td style={{ color: "var(--ink-2)" }}>{r.dsn}</td>
-        <td className="num" style={{ fontSize: 12.5 }}>{fmtTgl(r.tgl).split(", ")[1]}</td>
-        <td className="num">{r.a}</td><td className="num">{r.b}</td>
-        <td className="num">{r.mnt}</td><td className="num"><b>{r.jam}</b></td>
-        <td>{r.mk}</td><td>{r.met}</td><td className="num">{r.kls}</td>
+      <tr className="group" key={`g-${dsn}`}>
+        <td colSpan={10}>
+          {no}. {dsn}
+          <span>{sub.length} sesi · {totalJam} jam</span>
+        </td>
       </tr>
     );
+
+    sub.forEach((r, index) => {
+      jamTot += r.jam;
+      body.push(
+        <tr key={`${dsn}-${index}`}>
+          <td></td>
+          <td>{r.dsn}</td>
+          <td className="num" style={{ fontSize: 12.5 }}>{fmtTgl(r.tgl).split(", ")[1]}</td>
+          <td className="num">{r.a}</td>
+          <td className="num">{r.b}</td>
+          <td className="num">{r.mnt}</td>
+          <td className="num"><b>{r.jam}</b></td>
+          <td>{r.mk}</td>
+          <td>{r.met}</td>
+          <td className="num">{r.kls}</td>
+        </tr>
+      );
+    });
   });
 
   const handleDownloadExcel = async () => {
@@ -127,8 +140,36 @@ export default function HonorView() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const report = document.querySelector(".honor-report-print");
+      if (!report) throw new Error("Laporan tidak ditemukan");
+      const clone = report.cloneNode(true) as HTMLElement;
+      clone.style.width = "100%";
+      clone.style.maxWidth = "none";
+      clone.style.background = "#fff";
+      clone.querySelectorAll(".report-actions").forEach((element) => element.remove());
+      await html2pdf().set({
+        margin: 10,
+        filename: `Rekap_Honor_Mengajar_${periodeLabel.replace(/\\s+/g, "_")}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+      }).from(clone).save();
+      showToast("success", "Rekap honor PDF berhasil diunduh.");
+    } catch (err) {
+      console.error("Gagal mengunduh rekap honor PDF:", err);
+      showToast("error", "Gagal mengunduh rekap honor PDF.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   return (
-    <section className="view">
+    <section className="view honor-report-print">
       <div className="cards">
         <div className="stat"><dt>Periode</dt><dd style={{ fontSize: 18 }}>{periodeLabel}</dd></div>
         <div className="stat"><dt>Dosen tercatat</dt><dd>{no}</dd></div>
@@ -176,8 +217,12 @@ export default function HonorView() {
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
-            <button className="btn btn-sm">Kunci periode</button>
-            <button className="btn btn-sm btn-p" onClick={handleDownloadExcel}>Unduh XLSX</button>
+            <div className="report-actions" style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-sm" onClick={handleDownloadPdf} disabled={exportingPdf}>
+                {exportingPdf ? "Menyiapkan PDF..." : "Unduh PDF"}
+              </button>
+              <button className="btn btn-sm btn-p" onClick={handleDownloadExcel}>Unduh XLSX</button>
+            </div>
           </div>
           <p>Disusun dari berita acara yang sudah diisi. Tidak ada angka yang diketik ulang di halaman ini.</p>
         </div>

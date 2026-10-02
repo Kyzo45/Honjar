@@ -13,6 +13,7 @@ export type ViewId =
   | "ledger"
   | "monitor"
   | "honor"
+  | "reports"
   | "master"
   | "dosen"
   | "pjlist"

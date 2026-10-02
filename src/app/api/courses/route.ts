@@ -187,7 +187,19 @@ export async function GET(req: Request) {
     return NextResponse.json(fullCourses);
   } catch (error: any) {
     console.warn("PostgreSQL offline. Menggunakan data mata kuliah mock:", error.message);
-    return NextResponse.json(buildInitialCourses());
+    const fallbackCourses = buildInitialCourses();
+    const { searchParams } = new URL(req.url);
+    const nim = searchParams.get("nim");
+    const pjIdParam = searchParams.get("pjId");
+
+    if (nim) {
+      return NextResponse.json(fallbackCourses.filter((course) => course.roster.some((student) => student.nim === nim)));
+    }
+    if (pjIdParam) {
+      const pjId = Number(pjIdParam);
+      return NextResponse.json(fallbackCourses.filter((course) => course.pjId === pjId || course.pjIds.includes(pjId)));
+    }
+    return NextResponse.json(fallbackCourses);
   }
 }
 

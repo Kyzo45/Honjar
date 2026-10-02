@@ -15,6 +15,7 @@ export const TITLE: Record<ViewId, [string, string]> = {
   ledger: ["Berita acara kuliah", "Isi tiap pertemuan setelah kelas selesai. Batas input satu bulan."],
   monitor: ["Kelengkapan berita acara", "Pantau kelas yang tertinggal sebelum akhir semester."],
   honor: ["Rekap honor mengajar", "Turunan langsung dari berita acara."],
+  reports: ["Laporan akademik", "Ringkasan pelaksanaan kuliah, beban dosen, dan presensi mahasiswa."],
   master: ["Master mata kuliah", "Mata kuliah, kelas, dan penugasan dosen serta Penanggung Jawab."],
   dosen: ["List dosen", "Data induk dosen pengajar, diidentifikasi lewat NID untuk mencegah data ganda."],
   pjlist: ["List Penanggung Jawab", "Data akun mahasiswa Penanggung Jawab kelas beserta kredensial login."],

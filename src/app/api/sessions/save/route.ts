@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { BATAS_INPUT_HARI } from "@/lib/format";
+import { BATAS_INPUT_HARI, todayISO } from "@/lib/format";
 
 function calculateMenit(a: string, b: string): number {
   const p = (s: string) => {
@@ -8,14 +8,6 @@ function calculateMenit(a: string, b: string): number {
     return Number(parts[0]) * 60 + Number(parts[1]);
   };
   return p(b) - p(a);
-}
-
-function todayISO(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 function daysBetween(a: string, b: string): number {
