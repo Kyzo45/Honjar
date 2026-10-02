@@ -146,7 +146,9 @@ table.ledger td{
 table.ledger tr:last-child td{border-bottom:0}
 table.ledger .c-no{width:42px;text-align:center;font-family:var(--mono);color:var(--ink-3);font-size:12px}
 table.ledger .c-tgl{width:132px}
-table.ledger .c-jam{width:118px}
+table.ledger .c-jam{width:118px;display:flex;flex-direction:column;gap:2px}
+table.ledger .c-jam .num,
+table.ledger .c-jam .topik-meta{display:block;line-height:1.3}
 table.ledger .c-hadir{width:104px}
 table.ledger .c-topik{width:300px}
 table.ledger .c-dsn{width:190px}
@@ -167,7 +169,7 @@ tr.exam td{
   border-top:1px solid var(--rule);
 }
 .topik{font-weight:500;display:block;margin-bottom:2px}
-.topik-meta{font-size:11.5px;color:var(--ink-3)}
+.topik-meta{font-size:11.5px;color:var(--ink-3);display:block;line-height:1.35}
 .hadir{font-family:var(--mono);font-weight:600;font-size:14px}
 .hadir small{font-family:var(--body);font-weight:400;color:var(--ink-3);font-size:11.5px;display:block}
 .dsn{font-weight:500;display:block;line-height:1.35;margin-bottom:3px}
@@ -185,6 +187,9 @@ tr.exam td{
 .panel-h h2{margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
 .panel-h .right{margin-left:auto;display:flex;gap:8px}
 .panel-h p{margin:2px 0 0;font-size:12px;color:var(--ink-2);flex-basis:100%}
+.report-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.academic-report-print table.plain{min-width:900px}
+.academic-report-print table.plain th,.academic-report-print table.plain td{white-space:normal}
 .panel-toggle{
   display:flex;align-items:center;gap:8px;background:none;border:none;padding:0;
   cursor:pointer;color:inherit;font:inherit;text-align:left;

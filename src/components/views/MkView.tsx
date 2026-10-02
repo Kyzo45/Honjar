@@ -128,7 +128,7 @@ export default function MkView() {
         <div className="stat"><dt>Pertemuan tercatat</dt><dd>{total}<small>/{courses.length * 14}</small></dd></div>
         <div className="stat"><dt>Pertemuan belum diisi</dt><dd>{belumDiisi}</dd></div>
         <div className="stat"><dt>Total SKS diampu</dt><dd>{totalSks}<small> SKS</small></dd></div>
-        <div className="stat"><dt>Batas input mundur</dt><dd>7<small> hari</small></dd></div>
+        <div className="stat"><dt>Batas input mundur</dt><dd>30<small> hari</small></dd></div>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
         <p className="eyebrow" style={{ margin: 0 }}>Kelas yang Anda pegang</p>

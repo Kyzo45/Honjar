@@ -38,6 +38,7 @@ export default function Rail() {
           <p className="rail-label">Administrasi</p>
           <NavButton go="monitor" icon="◉" label="Kelengkapan" />
           <NavButton go="honor" icon="∑" label="Rekap honor" />
+          <NavButton go="reports" icon="▥" label="Laporan akademik" />
           <NavButton go="master" icon="◫" label="Master mata kuliah" />
           <NavButton go="dosen" icon="🎓" label="List dosen" />
           <NavButton go="pjlist" icon="🧑‍🎓" label="List Penanggung Jawab" />

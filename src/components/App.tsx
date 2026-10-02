@@ -8,6 +8,7 @@ import MkView from "@/components/views/MkView";
 import LedgerView from "@/components/views/LedgerView";
 import MonitorView from "@/components/views/MonitorView";
 import HonorView from "@/components/views/HonorView";
+import ReportsView from "@/components/views/ReportsView";
 import MasterView from "@/components/views/MasterView";
 import DosenView from "@/components/views/DosenView";
 import PJView from "@/components/views/PJView";
@@ -44,6 +45,7 @@ function Shell() {
             {view === "ledger" && <LedgerView />}
             {view === "monitor" && <MonitorView />}
             {view === "honor" && <HonorView />}
+            {view === "reports" && <ReportsView />}
             {view === "master" && <MasterView />}
             {view === "dosen" && <DosenView />}
             {view === "pjlist" && <PJView />}

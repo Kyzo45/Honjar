@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { BATAS_INPUT_HARI, daysBetween, jamAjar, menit } from "@/lib/format";
+import { BATAS_INPUT_HARI, daysBetween, jamAjar, menit, todayISO } from "@/lib/format";
 import type { Kehadiran, KuliahRow, MataKuliah, Metode, StatusMhs, AbsentRecord } from "@/lib/types";
 
 const METODE_OPTIONS: Metode[] = ["Teori", "Praktikum"];
@@ -24,14 +24,6 @@ interface AbsentEntry {
   locked: boolean;
   fileName?: string;
   fileUrl?: string;
-}
-
-function todayISO() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 interface Props {
