@@ -117,6 +117,16 @@ Atau jika memakai URL:
 DATABASE_URL=postgresql://postgres:your_password@localhost:5432/honjar
 ```
 
+### Penyimpanan berkas bukti
+
+Berkas surat sakit/izin disimpan menggunakan Vercel Blob saat aplikasi berjalan di Vercel. Buat Blob Store dari menu **Storage** di project Vercel, lalu hubungkan ke deployment agar environment variable berikut dibuat otomatis:
+
+```bash
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
+```
+
+Tanpa variable tersebut, upload di deployment akan ditolak dengan pesan konfigurasi. Saat development lokal, aplikasi tetap menggunakan folder `public/uploads/bukti`.
+
 > Pastikan database PostgreSQL sudah dibuat dan tabel telah dibuat sesuai skema di honjar.sql.
 
 ---

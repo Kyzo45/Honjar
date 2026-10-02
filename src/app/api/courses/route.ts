@@ -64,7 +64,14 @@ export async function GET(req: Request) {
       );
       coursesList = rows;
     } else if (pjIdParam) {
-      const { rows } = await pool.query("SELECT * FROM mata_kuliah WHERE pj_id = $1", [Number(pjIdParam)]);
+      const { rows } = await pool.query(
+        `SELECT DISTINCT mk.*
+         FROM mata_kuliah mk
+         LEFT JOIN mata_kuliah_pj mpj ON mpj.mata_kuliah_id = mk.id
+         WHERE mk.pj_id = $1 OR mpj.pj_id = $1
+         ORDER BY mk.id ASC`,
+        [Number(pjIdParam)]
+      );
       coursesList = rows;
     } else {
       const { rows } = await pool.query("SELECT * FROM mata_kuliah");
@@ -81,10 +88,18 @@ export async function GET(req: Request) {
       );
       const dosen = dosenRows.map((r: any) => r.nama);
 
-      // 3. Ambil nama PJ
-      const { rows: pjRows } = await pool.query("SELECT nama FROM users WHERE id = $1", [c.pj_id]);
-      const pj = pjRows[0]?.nama || "—";
-      const pjId: number | null = c.pj_id ?? null;
+      // 3. Ambil daftar PJ (banyak PJ didukung lewat relasi mata_kuliah_pj,
+      // sementara pj_id tetap dipertahankan untuk kompatibilitas kode lama).
+      const { rows: pjRelRows } = await pool.query(
+        `SELECT u.id, u.nama FROM users u
+         JOIN mata_kuliah_pj mpj ON mpj.pj_id = u.id
+         WHERE mpj.mata_kuliah_id = $1 ORDER BY u.nama ASC`,
+        [c.id]
+      );
+      const pjIds = pjRelRows.length > 0 ? pjRelRows.map((r: any) => Number(r.id)) : (c.pj_id ? [Number(c.pj_id)] : []);
+      const pjNames = pjRelRows.length > 0 ? pjRelRows.map((r: any) => r.nama) : (c.pj_id ? [((await pool.query("SELECT nama FROM users WHERE id = $1", [c.pj_id])).rows[0]?.nama) || "—"] : []);
+      const pj = pjNames.join(", ") || "—";
+      const pjId: number | null = pjIds[0] ?? null;
 
       // 4. Ambil roster peserta (lewat KRS) — satu mahasiswa bisa muncul di roster
       // banyak mata kuliah, jadi ini query langsung per mata kuliah, bukan lewat
@@ -157,8 +172,10 @@ export async function GET(req: Request) {
         roster,
         pj,
         pjId,
+        pjIds,
+        pjNames,
         rows,
-        tipe: c.tipe as "Teori" | "Praktikum",
+        tipe: c.tipe as "Teori" | "Praktikum" | "Teori & Praktikum",
         semester: c.semester,
         hari: c.hari,
         jamMulai: c.jam_mulai ? c.jam_mulai.slice(0, 5) : "—",
@@ -170,7 +187,19 @@ export async function GET(req: Request) {
     return NextResponse.json(fullCourses);
   } catch (error: any) {
     console.warn("PostgreSQL offline. Menggunakan data mata kuliah mock:", error.message);
-    return NextResponse.json(buildInitialCourses());
+    const fallbackCourses = buildInitialCourses();
+    const { searchParams } = new URL(req.url);
+    const nim = searchParams.get("nim");
+    const pjIdParam = searchParams.get("pjId");
+
+    if (nim) {
+      return NextResponse.json(fallbackCourses.filter((course) => course.roster.some((student) => student.nim === nim)));
+    }
+    if (pjIdParam) {
+      const pjId = Number(pjIdParam);
+      return NextResponse.json(fallbackCourses.filter((course) => course.pjId === pjId || course.pjIds.includes(pjId)));
+    }
+    return NextResponse.json(fallbackCourses);
   }
 }
 
@@ -202,7 +231,7 @@ async function insertNewRoster(
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { kode, nama, kelas, sks, koor, dosen, pjId, tipe, semester, hari, jamMulai, jamSelesai, ruangan, newRoster } = body;
+  const { kode, nama, kelas, sks, koor, dosen, pjId, pjIds, tipe, semester, hari, jamMulai, jamSelesai, ruangan, newRoster } = body;
   const dosenNames: string[] = Array.isArray(dosen)
     ? dosen.map((s: string) => s.trim()).filter(Boolean)
     : [];
@@ -223,8 +252,12 @@ export async function POST(req: Request) {
   try {
     await client.query("BEGIN");
 
-    // 1. PJ dipilih langsung dari daftar Penanggung Jawab (pjId), boleh kosong (belum ditentukan)
-    const pj_id: number | null = resolvePjId(pjId);
+    // 1. Dukung mode lama (pjId tunggal) dan mode baru (banyak PJ).
+    const normalizedPjIds = Array.isArray(pjIds)
+      ? pjIds.map((value: unknown) => Number(value)).filter((value) => Number.isFinite(value))
+      : [];
+    const selectedPjIds = normalizedPjIds.length > 0 ? normalizedPjIds : (resolvePjId(pjId) ? [resolvePjId(pjId) as number] : []);
+    const pj_id: number | null = selectedPjIds[0] ?? null;
 
     // 2. Simpan mata kuliah
     const { rows: insResult } = await client.query(
@@ -235,7 +268,15 @@ export async function POST(req: Request) {
     );
     const newCourseId = insResult[0].id;
 
-    // 3. Simpan dosen pengampu (many to many)
+    // 3. Simpan relasi PJ mata kuliah (banyak-ke-banyak, tetap menjaga pj_id utama untuk kompatibilitas)
+    for (const selectedPjId of selectedPjIds) {
+      await client.query(
+        "INSERT INTO mata_kuliah_pj (mata_kuliah_id, pj_id) VALUES ($1, $2) ON CONFLICT (mata_kuliah_id, pj_id) DO NOTHING",
+        [newCourseId, selectedPjId]
+      );
+    }
+
+    // 4. Simpan dosen pengampu (many to many)
     for (const dName of dosenNames) {
       const dosenId = await resolveDosenId(client, dName);
       await client.query("INSERT INTO dosen_mata_kuliah (mata_kuliah_id, dosen_id) VALUES ($1, $2)", [
@@ -244,11 +285,11 @@ export async function POST(req: Request) {
       ]);
     }
 
-    // 4. Simpan roster awal (input manual/impor Excel dari form ini) langsung ke KRS
+    // 5. Simpan roster awal (input manual/impor Excel dari form ini) langsung ke KRS
     // mata kuliah yang baru dibuat ini
     await insertNewRoster(client, newRoster, newCourseId);
 
-    // 5. Buat 16 pertemuan kosong
+    // 6. Buat 16 pertemuan kosong
     for (let i = 1; i <= 16; i++) {
       const pTipe = i === 8 ? "uts" : i === 16 ? "uas" : "kuliah";
       await client.query("INSERT INTO pertemuan (mata_kuliah_id, ke, tipe) VALUES ($1, $2, $3)", [
@@ -280,6 +321,7 @@ export async function PUT(req: Request) {
     koor,
     dosen,
     pjId,
+    pjIds,
     tipe,
     semester,
     hari,
@@ -312,8 +354,12 @@ export async function PUT(req: Request) {
   try {
     await client.query("BEGIN");
 
-    // 1. PJ dipilih langsung dari daftar Penanggung Jawab (pjId), boleh kosong (belum ditentukan)
-    const pj_id: number | null = resolvePjId(pjId);
+    // 1. Dukung mode lama (pjId tunggal) dan mode baru (banyak PJ).
+    const normalizedPjIds = Array.isArray(pjIds)
+      ? pjIds.map((value: unknown) => Number(value)).filter((value) => Number.isFinite(value))
+      : [];
+    const selectedPjIds = normalizedPjIds.length > 0 ? normalizedPjIds : (resolvePjId(pjId) ? [resolvePjId(pjId) as number] : []);
+    const pj_id: number | null = selectedPjIds[0] ?? null;
 
     // 2. Update mata kuliah
     await client.query(
@@ -334,7 +380,16 @@ export async function PUT(req: Request) {
       [kode, nama, sks, kelas, Number(semester), tipe, hari, jamMulai, jamSelesai, ruangan, koor, pj_id, id]
     );
 
-    // 3. Update dosen pengampu (many to many)
+    // 3. Sync relasi PJ mata kuliah (banyak-ke-banyak)
+    await client.query("DELETE FROM mata_kuliah_pj WHERE mata_kuliah_id = $1", [id]);
+    for (const selectedPjId of selectedPjIds) {
+      await client.query(
+        "INSERT INTO mata_kuliah_pj (mata_kuliah_id, pj_id) VALUES ($1, $2) ON CONFLICT (mata_kuliah_id, pj_id) DO NOTHING",
+        [id, selectedPjId]
+      );
+    }
+
+    // 4. Update dosen pengampu (many to many)
     await client.query("DELETE FROM dosen_mata_kuliah WHERE mata_kuliah_id = $1", [id]);
 
     for (const dName of dosenNames) {

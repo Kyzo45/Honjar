@@ -8,29 +8,34 @@ function buildTargets(courses: MataKuliah[], pjList: PJUser[]): ReminderTarget[]
   const map = new Map<number, ReminderTarget>();
 
   for (const m of courses) {
-    if (!m.pjId) continue;
+    const pjIds = (m.pjIds && m.pjIds.length > 0) ? m.pjIds : (m.pjId ? [m.pjId] : []);
+    if (pjIds.length === 0) continue;
+
     const filled = m.rows.filter((r) => r.tipe === "kuliah" && r.topik).length;
     const unfilled = m.rows.filter((r) => r.tipe === "kuliah" && !r.topik).length;
     if (unfilled === 0) continue;
 
-    const pj = pjList.find((p) => p.id === m.pjId);
-    if (!pj) continue;
+    for (const pjId of pjIds) {
+      const pj = pjList.find((p) => p.id === pjId);
+      if (!pj) continue;
 
-    if (!map.has(m.pjId)) {
-      map.set(m.pjId, {
-        pjId: m.pjId,
-        pjNama: pj.nama,
-        noHp: pj.noHp || "",
-        courses: [],
+      if (!map.has(pjId)) {
+        map.set(pjId, {
+          pjId,
+          pjNama: pj.nama,
+          noHp: pj.noHp || "",
+          courses: [],
+        });
+      }
+
+      map.get(pjId)!.courses.push({
+        kode: m.kode,
+        nama: m.nama,
+        kelas: m.kelas,
+        filledCount: filled,
+        unfilledCount: unfilled,
       });
     }
-    map.get(m.pjId)!.courses.push({
-      kode: m.kode,
-      nama: m.nama,
-      kelas: m.kelas,
-      filledCount: filled,
-      unfilledCount: unfilled,
-    });
   }
 
   return Array.from(map.values()).sort((a, b) => {
