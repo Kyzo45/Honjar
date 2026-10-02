@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { BATAS_INPUT_HARI } from "@/lib/format";
+import { BATAS_INPUT_HARI, todayISO } from "@/lib/format";
 
 function calculateMenit(a: string, b: string): number {
   const p = (s: string) => {
@@ -8,14 +8,6 @@ function calculateMenit(a: string, b: string): number {
     return Number(parts[0]) * 60 + Number(parts[1]);
   };
   return p(b) - p(a);
-}
-
-function todayISO(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 function daysBetween(a: string, b: string): number {
@@ -101,8 +93,11 @@ export async function POST(req: Request) {
     );
 
     // 4. Update data absensi mahasiswa
+    // Daftar absensi yang dikirim adalah sumber kebenaran untuk pertemuan ini.
+    // Hapus data lama lebih dulu agar penyimpanan tidak bergantung pada unique
+    // constraint lama yang mungkin belum ada di database deployment.
     await pool.query(
-      "DELETE FROM kehadiran_mahasiswa WHERE pertemuan_id = $1 AND status != 'hadir'",
+      "DELETE FROM kehadiran_mahasiswa WHERE pertemuan_id = $1",
       [pertemuanId]
     );
 
@@ -110,9 +105,7 @@ export async function POST(req: Request) {
       for (const a of patch.absents) {
         await pool.query(
           `INSERT INTO kehadiran_mahasiswa (pertemuan_id, mahasiswa_nim, status, file_bukti, file_nama_asli)
-          VALUES ($1, $2, $3, $4, $5)
-          ON CONFLICT (pertemuan_id, mahasiswa_nim)
-          DO UPDATE SET status = EXCLUDED.status, file_bukti = EXCLUDED.file_bukti, file_nama_asli = EXCLUDED.file_nama_asli`,
+          VALUES ($1, $2, $3, $4, $5)`,
           [pertemuanId, a.nim, a.status, a.fileUrl || null, a.fileName || null]
         );
       }
@@ -139,10 +132,9 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ success: true, hadir: mhsHadir });
-  } catch (error: any) {
-    console.warn("PostgreSQL offline. Menyimpan berita acara ke offline state:", error.message);
-    const totalMhs = 12; // default mock total mahasiswa
-    const totalAbsent = patch.absents?.length || 0;
-    return NextResponse.json({ success: true, hadir: totalMhs - totalAbsent });
+  } catch (error: unknown) {
+    console.error("Gagal menyimpan berita acara:", error);
+    const message = error instanceof Error ? error.message : "Kesalahan database tidak diketahui";
+    return NextResponse.json({ error: "Gagal menyimpan berita acara: " + message }, { status: 500 });
   }
 }

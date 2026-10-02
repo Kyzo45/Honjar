@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
-
-// Menyimpan berkas bukti sakit/izin yang diunggah PJ ke public/uploads/bukti,
-// supaya benar-benar ada file yang bisa dibuka lagi nanti — sebelumnya hanya
-// nama file yang dicatat (client-side), isi berkasnya sendiri tidak pernah
-// terkirim ke server sama sekali.
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "bukti");
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -32,9 +28,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ukuran berkas maksimal 5MB" }, { status: 400 });
     }
 
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
     const storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizeName(originalName)}`;
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const blob = await put(`bukti/${storedName}`, file, {
+        access: "public",
+        addRandomSuffix: false,
+      });
+
+      return NextResponse.json({
+        success: true,
+        url: blob.url,
+        originalName,
+      });
+    }
+
+    if (process.env.VERCEL) {
+      return NextResponse.json(
+        { error: "Penyimpanan berkas belum dikonfigurasi. Tambahkan BLOB_READ_WRITE_TOKEN di environment deployment." },
+        { status: 500 }
+      );
+    }
+
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
     const buffer = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(path.join(UPLOAD_DIR, storedName), buffer);
 
@@ -43,8 +58,9 @@ export async function POST(req: Request) {
       url: `/uploads/bukti/${storedName}`,
       originalName,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Gagal mengunggah berkas bukti:", error);
-    return NextResponse.json({ error: "Gagal mengunggah berkas: " + error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Kesalahan tidak diketahui";
+    return NextResponse.json({ error: "Gagal mengunggah berkas: " + message }, { status: 500 });
   }
 }

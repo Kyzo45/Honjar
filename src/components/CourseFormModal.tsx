@@ -21,11 +21,10 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
   const [kelas, setKelas] = useState(course?.kelas || "");
   const [koor, setKoor] = useState(course?.koor || "");
   const [dosenPengampu, setDosenPengampu] = useState<string[]>(course?.dosen || []);
-  const [pjId, setPjId] = useState<number | null>(course?.pjId ?? null);
-  const [pjNama, setPjNama] = useState(course?.pj && course.pj !== "—" ? course.pj : "");
+  const [pjIds, setPjIds] = useState<number[]>(course?.pjIds && course.pjIds.length > 0 ? course.pjIds : course?.pjId ? [course.pjId] : []);
 
   // New Fields
-  const [tipe, setTipe] = useState<"Teori" | "Praktikum">(course?.tipe || "Teori");
+  const [tipe, setTipe] = useState<"Teori" | "Praktikum" | "Teori & Praktikum">(course?.tipe || "Teori");
   const [semester, setSemester] = useState(course?.semester ? course.semester.toString() : "1");
   const [hari, setHari] = useState(course?.hari || "Senin");
   const [jamMulai, setJamMulai] = useState(course?.jamMulai || "07:00");
@@ -133,11 +132,11 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
     setKoorSearch("");
   };
 
-  const pickPJ = (p: { id: number; nama: string }) => {
-    setPjId(p.id);
-    setPjNama(p.nama);
-    setPjPickerOpen(false);
-    setPjSearch("");
+  const togglePJ = (id: number) => {
+    setPjIds((prev) => {
+      if (prev.includes(id)) return prev.filter((value) => value !== id);
+      return [...prev, id];
+    });
   };
 
   const addDosenPengampu = (nama: string) => {
@@ -236,7 +235,8 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
         sks: sks.trim() || "—",
         koor: koor.trim() || "—",
         dosen: dosenPengampu,
-        pjId,
+        pjId: pjIds[0] ?? null,
+        pjIds,
         tipe,
         semester: Number(semester),
         hari: hari.trim(),
@@ -353,9 +353,10 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
             </div>
             <div className="row c2">
               <label className="f"><span>Tipe Mata Kuliah</span>
-                <select value={tipe} onChange={(e) => setTipe(e.target.value as "Teori" | "Praktikum")}>
+                <select value={tipe} onChange={(e) => setTipe(e.target.value as "Teori" | "Praktikum" | "Teori & Praktikum")}>
                   <option value="Teori">Teori</option>
                   <option value="Praktikum">Praktikum</option>
+                  <option value="Teori & Praktikum">Teori & Praktikum</option>
                 </select>
               </label>
               <label className="f"><span>Semester</span>
@@ -371,45 +372,56 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
               </label>
             </div>
             <div className="row">
-              <label className="f"><span>Penanggung Jawab (PJ Mahasiswa) <em>· satu PJ, bisa diganti</em></span>
+              <label className="f"><span>Penanggung Jawab (PJ Mahasiswa) <em>· bisa lebih dari satu</em></span>
                 <div className="combo" ref={pjPickerRef}>
-                  {pjId && !pjPickerOpen ? (
-                    <div className="absent-list">
-                      <div className="absent-row">
-                        <div className="who"><b>{pjNama}</b></div>
-                        <button type="button" className="btn btn-sm" onClick={() => setPjPickerOpen(true)}>Ganti</button>
+                  <button type="button" className="combo-trigger" onClick={() => setPjPickerOpen((o) => !o)}>
+                    <i>🔍</i> {pjIds.length > 0 ? "Atur PJ…" : "Pilih Penanggung Jawab…"}
+                  </button>
+                  {pjPickerOpen && (
+                    <div className="combo-panel">
+                      <input
+                        className="combo-search"
+                        autoFocus
+                        placeholder="Cari NIM atau nama PJ"
+                        value={pjSearch}
+                        onChange={(e) => setPjSearch(e.target.value)}
+                      />
+                      <div className="combo-list">
+                        {pjOptions.length === 0 ? (
+                          <div className="combo-empty">
+                            {pjList.length === 0 ? "Belum ada data Penanggung Jawab" : "Tidak ditemukan"}
+                          </div>
+                        ) : (
+                          pjOptions.map((p) => {
+                            const checked = pjIds.includes(p.id);
+                            return (
+                              <button type="button" key={p.id} className="combo-item" onClick={() => togglePJ(p.id)} style={{ justifyContent: "space-between" }}>
+                                <span>
+                                  <span className="nim">{p.nim}</span>{p.nama}
+                                </span>
+                                <span style={{ fontSize: 12, color: checked ? "var(--verd)" : "var(--ink-3)" }}>
+                                  {checked ? "✓" : "○"}
+                                </span>
+                              </button>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    <>
-                      <button type="button" className="combo-trigger" onClick={() => setPjPickerOpen((o) => !o)}>
-                        <i>🔍</i> {pjId ? "Cari pengganti PJ…" : "Pilih Penanggung Jawab…"}
-                      </button>
-                      {pjPickerOpen && (
-                        <div className="combo-panel">
-                          <input
-                            className="combo-search"
-                            autoFocus
-                            placeholder="Cari NIM atau nama PJ"
-                            value={pjSearch}
-                            onChange={(e) => setPjSearch(e.target.value)}
-                          />
-                          <div className="combo-list">
-                            {pjOptions.length === 0 ? (
-                              <div className="combo-empty">
-                                {pjList.length === 0 ? "Belum ada data Penanggung Jawab" : "Tidak ditemukan"}
-                              </div>
-                            ) : (
-                              pjOptions.map((p) => (
-                                <button type="button" key={p.id} className="combo-item" onClick={() => pickPJ(p)}>
-                                  <span className="nim">{p.nim}</span>{p.nama}
-                                </button>
-                              ))
-                            )}
+                  )}
+                  {pjIds.length > 0 && (
+                    <div className="absent-list" style={{ marginTop: "8px" }}>
+                      {pjIds.map((id) => {
+                        const pj = pjList.find((item) => item.id === id);
+                        if (!pj) return null;
+                        return (
+                          <div className="absent-row" key={pj.id}>
+                            <div className="who"><b>{pj.nama}</b><span>{pj.nim}</span></div>
+                            <button type="button" className="rm" aria-label="Hapus PJ" onClick={() => togglePJ(pj.id)}>✕</button>
                           </div>
-                        </div>
-                      )}
-                    </>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </label>

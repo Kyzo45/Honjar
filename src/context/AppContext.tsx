@@ -72,6 +72,8 @@ const DEFAULT_MK: MataKuliah = {
   roster: [],
   pj: "—",
   pjId: null,
+  pjIds: [],
+  pjNames: [],
   rows: [],
   tipe: "Teori",
   semester: 1,
@@ -107,17 +109,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
   const dismissToast = (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
+  const loadCourses = async (session: UserSession | null = user): Promise<MataKuliah[] | null> => {
+    if (!session) return null;
+    const url = session.role === "pj"
+      ? `/api/courses?pjId=${session.id}`
+      : "/api/courses";
+    const result = await fetch(url).then((response) => response.json());
+    return Array.isArray(result) ? result : null;
+  };
+
   // 1. Muat data awal dari API MySQL/Postgres
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [resC, resL, resPJ, resM] = await Promise.all([
-          fetch("/api/courses").then((r) => r.json()),
+        const [resL, resPJ, resM] = await Promise.all([
           fetch("/api/lecturers").then((r) => r.json()),
           fetch("/api/pj").then((r) => r.json()),
           fetch("/api/mahasiswa").then((r) => r.json())
         ]);
-        if (Array.isArray(resC)) setCourses(resC);
         if (Array.isArray(resL)) setDosenList(resL);
         if (Array.isArray(resPJ)) setPjList(resPJ);
         if (Array.isArray(resM)) setMahasiswaList(resM);
@@ -204,8 +213,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Server menolak (mis. validasi tanggal/jam) — batalkan pembaruan optimistik
         // dengan menarik ulang data asli, dan beri tahu penggunanya.
         showToast("error", data.error || "Gagal menyimpan pertemuan");
-        const fresh = await fetch("/api/courses").then((r) => r.json());
-        if (Array.isArray(fresh)) setCourses(fresh);
+        const fresh = await loadCourses();
+        if (fresh) setCourses(fresh);
       }
     } catch (err) {
       console.error("Gagal sinkronisasi simpan pertemuan:", err);
@@ -243,10 +252,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (data.success) {
         const [fresh, freshM] = await Promise.all([
-          fetch("/api/courses").then((r) => r.json()),
+          loadCourses(),
           fetch("/api/mahasiswa").then((r) => r.json())
         ]);
-        if (Array.isArray(fresh)) setCourses(fresh);
+        if (fresh) setCourses(fresh);
         if (Array.isArray(freshM)) setMahasiswaList(freshM);
         return { success: true };
       }
@@ -260,6 +269,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 3b. Ubah MK ke Database
   const updateCourse = async (id: number, input: NewCourseInput): Promise<{ success: boolean; error?: string }> => {
     // Optimistic Update
+    const selectedPjIds = input.pjIds && input.pjIds.length > 0 ? input.pjIds : input.pjId ? [input.pjId] : [];
+    const selectedPjNames = selectedPjIds
+      .map((id) => pjList.find((p) => p.id === id)?.nama)
+      .filter(Boolean) as string[];
+
     setCourses((prev) =>
       prev.map((c) =>
         c.id !== id
@@ -272,8 +286,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               sks: input.sks,
               koor: input.koor,
               dosen: input.dosen,
-              pj: pjList.find((p) => p.id === input.pjId)?.nama || "—",
-              pjId: input.pjId,
+              pj: selectedPjNames.join(", ") || "—",
+              pjId: selectedPjIds[0] ?? null,
+              pjIds: selectedPjIds,
+              pjNames: selectedPjNames,
               tipe: input.tipe,
               semester: input.semester,
               hari: input.hari,
@@ -293,16 +309,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (data.success) {
         const [fresh, freshM] = await Promise.all([
-          fetch("/api/courses").then((r) => r.json()),
+          loadCourses(),
           fetch("/api/mahasiswa").then((r) => r.json())
         ]);
-        if (Array.isArray(fresh)) setCourses(fresh);
+        if (fresh) setCourses(fresh);
         if (Array.isArray(freshM)) setMahasiswaList(freshM);
         return { success: true };
       }
       // Gagal di server: tarik ulang data asli supaya optimistic update tidak nyangkut salah
-      const fresh = await fetch("/api/courses").then((r) => r.json());
-      if (Array.isArray(fresh)) setCourses(fresh);
+      const fresh = await loadCourses();
+      if (fresh) setCourses(fresh);
       return { success: false, error: data.error };
     } catch (err) {
       console.error("Gagal memperbarui mata kuliah:", err);
@@ -392,8 +408,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (data.success) {
         setDosenList((prev) => prev.filter((d) => d.id !== id));
-        const freshCourses = await fetch("/api/courses").then((r) => r.json());
-        if (Array.isArray(freshCourses)) setCourses(freshCourses);
+        const freshCourses = await loadCourses();
+        if (freshCourses) setCourses(freshCourses);
         showToast("success", "Dosen berhasil dihapus.");
         return { success: true };
       }
@@ -489,10 +505,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data.success) {
         const [fresh, freshC] = await Promise.all([
           fetch("/api/mahasiswa").then((r) => r.json()),
-          fetch("/api/courses").then((r) => r.json())
+          loadCourses()
         ]);
         if (Array.isArray(fresh)) setMahasiswaList(fresh);
-        if (Array.isArray(freshC)) setCourses(freshC);
+        if (freshC) setCourses(freshC);
         showToast("success", "Mahasiswa berhasil ditambahkan.");
         return { success: true };
       }
@@ -517,10 +533,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data.success) {
         const [fresh, freshC] = await Promise.all([
           fetch("/api/mahasiswa").then((r) => r.json()),
-          fetch("/api/courses").then((r) => r.json())
+          loadCourses()
         ]);
         if (Array.isArray(fresh)) setMahasiswaList(fresh);
-        if (Array.isArray(freshC)) setCourses(freshC);
+        if (freshC) setCourses(freshC);
         showToast("success", "Perubahan mahasiswa berhasil disimpan.");
         return { success: true };
       }
@@ -544,8 +560,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (data.success) {
         setMahasiswaList((prev) => prev.filter((m) => m.nim !== nim));
-        const freshCourses = await fetch("/api/courses").then((r) => r.json());
-        if (Array.isArray(freshCourses)) setCourses(freshCourses);
+        const freshCourses = await loadCourses();
+        if (freshCourses) setCourses(freshCourses);
         showToast("success", "Mahasiswa berhasil dihapus.");
         return { success: true };
       }
@@ -587,10 +603,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data.success) {
         const [fresh, freshC] = await Promise.all([
           fetch("/api/mahasiswa").then((r) => r.json()),
-          fetch("/api/courses").then((r) => r.json())
+          loadCourses()
         ]);
         if (Array.isArray(fresh)) setMahasiswaList(fresh);
-        if (Array.isArray(freshC)) setCourses(freshC);
+        if (freshC) setCourses(freshC);
         return { success: true, inserted: data.inserted, updated: data.updated };
       }
       return { success: false, error: data.error };
@@ -611,10 +627,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (data.success) {
         const [freshC, freshM] = await Promise.all([
-          fetch("/api/courses").then((r) => r.json()),
+          loadCourses(),
           fetch("/api/mahasiswa").then((r) => r.json())
         ]);
-        if (Array.isArray(freshC)) setCourses(freshC);
+        if (freshC) setCourses(freshC);
         if (Array.isArray(freshM)) setMahasiswaList(freshM);
         showToast("success", "Mahasiswa berhasil ditambahkan ke mata kuliah.");
         return { success: true };
@@ -638,8 +654,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (data.success) {
-        const freshC = await fetch("/api/courses").then((r) => r.json());
-        if (Array.isArray(freshC)) setCourses(freshC);
+        const freshC = await loadCourses();
+        if (freshC) setCourses(freshC);
         showToast("success", "Mahasiswa berhasil dikeluarkan dari mata kuliah.");
         return { success: true };
       }
@@ -664,16 +680,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data.success) {
         setUser(data.user);
         setRoleState(data.user.role);
+        setCourses([]);
         
         // Fetch courses khusus: mahasiswa lihat kelas KRS-nya, PJ lihat mata kuliah yang dia tanggung jawabkan
-        const coursesUrl =
-          data.user.role === "mahasiswa"
-            ? `/api/courses?nim=${data.user.nim}`
-            : data.user.role === "pj"
-              ? `/api/courses?pjId=${data.user.id}`
-              : "/api/courses";
-        const freshCourses = await fetch(coursesUrl).then((r) => r.json());
-        if (Array.isArray(freshCourses)) setCourses(freshCourses);
+        const freshCourses = await loadCourses(data.user);
+        if (freshCourses) setCourses(freshCourses);
 
         // Arahkan halaman awal berdasarkan peran
         if (data.user.role === "admin") {
@@ -694,13 +705,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 6. Fungsi Logout
   const logout = () => {
     setUser(null);
+    setCourses([]);
     setView("mk");
-    // Reload all courses
-    fetch("/api/courses")
-      .then((r) => r.json())
-      .then((res) => {
-        if (Array.isArray(res)) setCourses(res);
-      });
   };
 
   const [title, sub] = view === "ledger"
