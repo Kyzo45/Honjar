@@ -30,7 +30,7 @@ function CoursePage({ m }: CoursePageProps) {
           <b>Koordinator</b> : {m.koor}
         </div>
         <div>
-          <b>Tingkat / semester</b> : {m.kelas} / Semester {m.semester}<br />
+          <b>Tingkat / Semester</b> : {m.kelas} / Semester {m.semester}<br />
           <b>Semester / T.A.</b> : Genap 2025/2026<br />
           <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
             <b style={{ whiteSpace: "nowrap" }}>Dosen</b> :

@@ -48,8 +48,8 @@ export default function MonitorView() {
       <div className="note">
         <span>◉</span>
         <span>
-          <b>Dosen tidak perlu melakukan apa pun di sini.</b>
-          {" "}Rekap bulanan dikirim otomatis ke setiap dosen sebagai pemberitahuan. Tanpa sanggahan dalam 7 hari, data dianggap benar.
+          <b>Admin tidak perlu melakukan apa pun di sini.</b>
+          {" "}Rekap bulanan dikirim otomatis ke setiap dosen sebagai pemberitahuan. Tanpa sanggahan dalam 30 hari, data dianggap benar.
         </span>
       </div>
       <div className="panel">
