@@ -11,11 +11,21 @@ export default function MasterView() {
   const [editingCourse, setEditingCourse] = useState<MataKuliah | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
+  const [classFilter, setClassFilter] = useState("all");
+
+  const availableClasses = useMemo(() => {
+    const semesterCourses = semesterFilter === "all"
+      ? courses
+      : courses.filter((course) => course.semester === semesterFilter);
+    return Array.from(new Set(semesterCourses.map((course) => course.kelas)))
+      .sort((a, b) => a.localeCompare(b));
+  }, [courses, semesterFilter]);
 
   const filteredCourses = useMemo(() => {
     const q = query.trim().toLowerCase();
     return courses.filter((m) => {
       if (semesterFilter !== "all" && m.semester !== semesterFilter) return false;
+      if (classFilter !== "all" && m.kelas !== classFilter) return false;
       if (!q) return true;
       return (
         m.kode.toLowerCase().includes(q) ||
@@ -26,7 +36,7 @@ export default function MasterView() {
         m.dosen.some((d) => d.toLowerCase().includes(q))
       );
     });
-  }, [courses, query, semesterFilter]);
+  }, [courses, query, semesterFilter, classFilter]);
 
   const handleDelete = async (m: MataKuliah) => {
     if (!confirm(`Hapus mata kuliah "${m.nama}" (${m.kode} · Kelas ${m.kelas})? Seluruh berita acara dan data terkait akan ikut terhapus.`)) return;
@@ -41,6 +51,24 @@ export default function MasterView() {
         <div className="panel-h">
           <h2>Mata kuliah dan penugasan</h2>
           <div className="right" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <select
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              aria-label="Filter kelas mata kuliah"
+              style={{
+                padding: "6px 10px",
+                fontSize: "12.5px",
+                borderRadius: "var(--r)",
+                border: "1px solid var(--rule)",
+                background: "var(--paper)",
+                minWidth: "140px"
+              }}
+            >
+              <option value="all">Semua kelas</option>
+              {availableClasses.map((kelas) => (
+                <option key={kelas} value={kelas}>{kelas}</option>
+              ))}
+            </select>
             <input
               type="text"
               value={query}
@@ -112,9 +140,9 @@ export default function MasterView() {
                   <td colSpan={11} style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px" }}>
                     {courses.length === 0
                       ? "Belum ada mata kuliah."
-                      : query
-                        ? `Tidak ada mata kuliah yang cocok dengan "${query}".`
-                        : "Tidak ada mata kuliah pada semester ini."}
+                      : query || classFilter !== "all" || semesterFilter !== "all"
+                        ? "Tidak ada mata kuliah yang cocok dengan filter."
+                        : "Tidak ada mata kuliah."}
                   </td>
                 </tr>
               )}
