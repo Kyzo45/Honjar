@@ -175,7 +175,7 @@ export async function GET(req: Request) {
         pjIds,
         pjNames,
         rows,
-        tipe: c.tipe as "Teori" | "Praktikum" | "Teori & Praktikum",
+        tipe: c.tipe as "Teori" | "Praktikum",
         semester: c.semester,
         hari: c.hari,
         jamMulai: c.jam_mulai ? c.jam_mulai.slice(0, 5) : "—",

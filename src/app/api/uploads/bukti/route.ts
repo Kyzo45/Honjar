@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
+import { MAX_EVIDENCE_UPLOAD_BYTES, MAX_EVIDENCE_UPLOAD_MESSAGE } from "@/lib/upload";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "bukti");
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_EXT = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
 
 function sanitizeName(name: string): string {
@@ -24,8 +24,8 @@ export async function POST(req: Request) {
     if (!ALLOWED_EXT.includes(ext)) {
       return NextResponse.json({ error: "Format berkas harus PDF atau gambar (JPG/PNG/WEBP)" }, { status: 400 });
     }
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: "Ukuran berkas maksimal 5MB" }, { status: 400 });
+    if (file.size > MAX_EVIDENCE_UPLOAD_BYTES) {
+      return NextResponse.json({ error: MAX_EVIDENCE_UPLOAD_MESSAGE }, { status: 400 });
     }
 
     const storedName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizeName(originalName)}`;

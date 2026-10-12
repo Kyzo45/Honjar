@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { buildInitialCourses } from "@/lib/data";
 import { generateHonorExcel } from "@/lib/generateExcel";
+import { parseDosenList } from "@/lib/types";
 
 function formatDate(date: any): string | undefined {
   if (!date) return undefined;
@@ -40,17 +41,20 @@ function buildFallbackRows({ month, year }: { month?: string; year?: string }) {
         if (month !== "all" && monthNum !== month) return;
       }
 
-      rows.push({
-        dsn: r.dosen || m.koor,
-        status: m.koor === r.dosen ? "tetap" : "luar",
-        tgl: r.tgl,
-        a: Array.isArray(r.jam) ? r.jam[0] : "",
-        b: Array.isArray(r.jam) ? r.jam[1] : "",
-        mnt: r.mnt || 100,
-        jam: r.jamAjar || 2,
-        mk: m.nama,
-        met: r.metode || m.tipe,
-        kls: m.kelas,
+      const dosenNames = parseDosenList(r.dosen || m.koor);
+      dosenNames.forEach((nama) => {
+        rows.push({
+          dsn: nama,
+          status: m.koor === nama ? "tetap" : "luar",
+          tgl: r.tgl,
+          a: Array.isArray(r.jam) ? r.jam[0] : "",
+          b: Array.isArray(r.jam) ? r.jam[1] : "",
+          mnt: r.mnt || 100,
+          jam: r.jamAjar || 2,
+          mk: m.nama,
+          met: r.metode || m.tipe,
+          kls: m.kelas,
+        });
       });
     });
   });
@@ -82,18 +86,20 @@ async function collectHonorRows({ month, year }: { month?: string; year?: string
           if (month !== "all" && monthNum !== month) continue;
         }
 
-        const dosenNama = p.dosen_pengajar || c.koordinator;
-        rows.push({
-          dsn: dosenNama,
-          status: statusByName.get(dosenNama) || "tetap",
-          tgl: tglStr,
-          a: p.jam_mulai ? p.jam_mulai.slice(0, 5) : "",
-          b: p.jam_selesai ? p.jam_selesai.slice(0, 5) : "",
-          mnt: p.durasi_menit || 0,
-          jam: p.jumlah_jam || 0,
-          mk: c.nama,
-          met: p.metode || c.tipe,
-          kls: c.kelas,
+        const dosenNames = parseDosenList(p.dosen_pengajar || c.koordinator);
+        dosenNames.forEach((dosenNama) => {
+          rows.push({
+            dsn: dosenNama,
+            status: statusByName.get(dosenNama) || "tetap",
+            tgl: tglStr,
+            a: p.jam_mulai ? p.jam_mulai.slice(0, 5) : "",
+            b: p.jam_selesai ? p.jam_selesai.slice(0, 5) : "",
+            mnt: p.durasi_menit || 0,
+            jam: p.jumlah_jam || 0,
+            mk: c.nama,
+            met: p.metode || c.tipe,
+            kls: c.kelas,
+          });
         });
       }
     }

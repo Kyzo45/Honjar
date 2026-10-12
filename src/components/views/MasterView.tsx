@@ -11,6 +11,51 @@ export default function MasterView() {
   const [editingCourse, setEditingCourse] = useState<MataKuliah | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const response = await fetch("/api/courses/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          semester: semesterFilter === "all" ? "all" : semesterFilter,
+          courses: filteredCourses.map((course) => ({
+            kode: course.kode,
+            nama: course.nama,
+            tipe: course.tipe,
+            sks: course.sks,
+            semester: course.semester,
+            kelas: course.kelas,
+            hari: course.hari,
+            jamMulai: course.jamMulai,
+            jamSelesai: course.jamSelesai,
+            ruangan: course.ruangan,
+            koor: course.koor,
+            dosen: course.dosen,
+            pj: course.pj,
+          })),
+        }),
+      });
+      if (!response.ok) throw new Error("Gagal membuat laporan Excel");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Daftar_Mata_Kuliah_Semester_${semesterFilter === "all" ? "Semua" : semesterFilter}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Gagal mengunduh daftar mata kuliah Excel:", error);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const filteredCourses = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -55,6 +100,9 @@ export default function MasterView() {
                 minWidth: "220px"
               }}
             />
+            <button className="btn btn-sm" onClick={handleExportExcel} disabled={exporting}>
+              {exporting ? "Menyiapkan..." : "Unduh Excel"}
+            </button>
             <button className="btn btn-sm btn-p" onClick={() => setShowForm(true)}>Tambah mata kuliah</button>
           </div>
         </div>

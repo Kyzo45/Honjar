@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { jamAjar, menit } from "@/lib/format";
+import { parseDosenList } from "@/lib/types";
 
 type ReportKind = "courses" | "lecturers" | "attendance";
 
@@ -61,12 +62,15 @@ export default function ReportsView() {
     const summaries = new Map<string, LecturerSummary>();
     filteredCourses.forEach((course) => course.rows.forEach((row) => {
       if (row.tipe !== "kuliah" || !row.topik || row.kehadiran === "batal" || !row.jam) return;
-      const nama = row.dosen || course.koor;
-      const summary = summaries.get(nama) ?? { nama, sesi: 0, jam: 0, mataKuliah: new Set<string>() };
-      summary.sesi += 1;
-      summary.jam += jamAjar(menit(row.jam[0], row.jam[1]));
-      summary.mataKuliah.add(`${course.nama} · ${course.kelas}`);
-      summaries.set(nama, summary);
+      const [jamMulai, jamSelesai] = row.jam;
+      const dosenList = parseDosenList(row.dosen || course.koor);
+      dosenList.forEach((nama) => {
+        const summary = summaries.get(nama) ?? { nama, sesi: 0, jam: 0, mataKuliah: new Set<string>() };
+        summary.sesi += 1;
+        summary.jam += jamAjar(menit(jamMulai, jamSelesai));
+        summary.mataKuliah.add(`${course.nama} · ${course.kelas}`);
+        summaries.set(nama, summary);
+      });
     }));
     return Array.from(summaries.values()).sort((a, b) => b.jam - a.jam || a.nama.localeCompare(b.nama));
   }, [filteredCourses]);
@@ -94,6 +98,7 @@ export default function ReportsView() {
   }, [filteredCourses]);
 
   const reportLabel = REPORTS.find((item) => item.id === report)?.label || "Laporan akademik";
+  const semesterLabel = semester === "all" ? "Semua semester" : `Semester ${semester}`;
 
   const handleDownloadPdf = async () => {
     if (exporting) return;
@@ -144,9 +149,9 @@ export default function ReportsView() {
     if (report === "lecturers") {
       return (
         <table className="plain">
-          <thead><tr><th>No</th><th>Dosen</th><th>Jumlah sesi</th><th>Total jam ajar</th><th>Mata kuliah diampu</th></tr></thead>
+          <thead><tr><th>No</th><th>Dosen</th><th>Jumlah sesi</th><th>Total jam ajar</th><th>Jumlah mata kuliah diampu</th></tr></thead>
           <tbody>{lecturerRows.map((lecturer, index) => (
-            <tr key={lecturer.nama}><td>{index + 1}</td><td><b>{lecturer.nama}</b></td><td className="num">{lecturer.sesi}</td><td className="num">{lecturer.jam}</td><td>{Array.from(lecturer.mataKuliah).join(", ")}</td></tr>
+            <tr key={lecturer.nama}><td>{index + 1}</td><td><b>{lecturer.nama}</b></td><td className="num">{lecturer.sesi}</td><td className="num">{lecturer.jam}</td><td className="num">{lecturer.mataKuliah.size}</td></tr>
           ))}{lecturerRows.length === 0 && <EmptyRow columns={5} />}</tbody>
         </table>
       );
@@ -197,7 +202,28 @@ export default function ReportsView() {
               {exporting ? "Menyiapkan PDF..." : "Unduh PDF"}
             </button>
           </div>
-          <p>{reportLabel} · {semester === "all" ? "Semua semester" : `Semester ${semester}`} · Tahun ajaran 2025/2026</p>
+          <p>{reportLabel} · {semesterLabel} · Tahun ajaran 2026/2027</p>
+        </div>
+        <div className="report-print-header">
+          <div className="page-kop">
+            <img src="/logo-yayasan.jpeg" alt="Logo Yayasan" className="page-kop-logo" />
+            <div className="page-kop-text">
+              <b>YAYASAN KARTIKA EKA PAKSI</b>
+              <b style={{ color: "var(--ink)", fontSize: "11px", fontWeight: "700" }}>UNIVERSITAS JENDERAL ACHMAD YANI (UNJANI)</b>
+              <b>FAKULTAS ILMU DAN TEKNOLOGI KESEHATAN (FITKes)</b>
+              <b>PROGRAM STUDI TEKNOLOGI LABORATORIUM MEDIS (D4)</b>
+              <span>Kampus: Jl. Terusan Jenderal Sudirman-Cimahi Tlp.(022 ) 6631622–6631623</span>
+            </div>
+            <img src="/logo-unjani.png" alt="Logo Unjani" className="page-kop-logo" />
+          </div>
+          <h4>Laporan Akademik</h4>
+          <div className="page-meta" style={{ marginBottom: 0 }}>
+            <div>
+              <b>Jenis laporan</b> : {reportLabel}<br />
+              <b>Semester</b> : {semesterLabel}<br />
+              <b>Tahun ajaran</b> : 2026/2027
+            </div>
+          </div>
         </div>
         <div className="scroll">{renderReport()}</div>
       </div>

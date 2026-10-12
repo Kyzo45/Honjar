@@ -190,6 +190,11 @@ tr.exam td{
 .report-tabs{display:flex;gap:6px;flex-wrap:wrap}
 .academic-report-print table.plain{min-width:900px}
 .academic-report-print table.plain th,.academic-report-print table.plain td{white-space:normal}
+.report-print-header{padding:18px 18px 0;border-bottom:1px solid var(--rule-soft);background:var(--panel)}
+.report-print-header .page-kop{margin:0;border-bottom:3.5px double var(--ink)}
+.report-print-header h4{margin:12px 0 10px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;text-align:center;font-weight:700}
+.report-print-header .page-meta{display:flex;gap:22px;margin:0;padding-bottom:12px;font-size:10px}
+.report-print-header .page-meta div{line-height:1.6}
 .panel-toggle{
   display:flex;align-items:center;gap:8px;background:none;border:none;padding:0;
   cursor:pointer;color:inherit;font:inherit;text-align:left;
@@ -283,6 +288,26 @@ textarea{resize:vertical;min-height:62px}
 .seg button{flex:1;padding:8px 4px;font-size:12.5px;font-weight:600;color:var(--ink-2);border-right:1px solid var(--rule)}
 .seg button:last-child{border-right:0}
 .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.dosen-picker{
+  border:1px solid var(--rule); border-radius:12px; background:linear-gradient(180deg,#F9FCF9,#F1F7F2);
+  overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
+}
+.dosen-picker-header{
+  padding:8px 12px; border-bottom:1px solid var(--rule); font-size:11.5px; font-weight:600; color:var(--ink-2);
+  background:rgba(23,135,84,.04);
+}
+.dosen-picker-list{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px; padding:10px;
+  max-height:190px; overflow:auto;
+}
+.dosen-option{
+  display:flex; align-items:center; gap:8px; min-height:42px; padding:8px 10px; border:1px solid var(--rule);
+  border-radius:10px; background:#fff; cursor:pointer; transition:all .12s ease; color:var(--ink);
+}
+.dosen-option:hover{ border-color:var(--stamp-line); box-shadow:0 4px 12px -10px rgba(23,135,84,.6); }
+.dosen-option.active{ background:var(--stamp-soft); border-color:var(--stamp); color:var(--ink); }
+.dosen-option input{ accent-color:var(--stamp); width:15px; height:15px; margin:0; }
+.dosen-option span{ font-size:13px; line-height:1.4; }
 .derived{
   background:var(--stamp-soft);border:1px solid var(--stamp-line);border-radius:var(--r);
   padding:10px 12px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;
