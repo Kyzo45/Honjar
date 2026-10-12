@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { BATAS_INPUT_HARI, daysBetween, jamAjar, menit, todayISO } from "@/lib/format";
+import { parseDosenList } from "@/lib/types";
 import type { Kehadiran, KuliahRow, MataKuliah, Metode, StatusMhs, AbsentRecord } from "@/lib/types";
 
 const METODE_OPTIONS: Metode[] = ["Teori", "Praktikum"];
@@ -55,8 +56,13 @@ export default function SheetModal({ course, row }: Props) {
   const [metode, setMetode] = useState<Metode>(row.metode || "Teori");
   const [topik, setTopik] = useState(row.topik || "");
 
-  // Set dynamic default dosen
-  const [dosen, setDosen] = useState(row.dosen || courseLecturers[0] || "");
+  const isMultiDosenCourse = course.tipe === "Praktikum";
+  const parsedDosen = parseDosenList(row.dosen || courseLecturers[0] || "");
+
+  // Multi-dosen hanya berlaku untuk mata kuliah praktikum; teori tetap satu dosen.
+  const [dosenList, setDosenList] = useState<string[]>(
+    parsedDosen.length > 0 ? parsedDosen : (courseLecturers[0] ? [courseLecturers[0]] : [])
+  );
   const [kehadiran, setKehadiran] = useState<Kehadiran>(row.kehadiran || "hadir");
   const [topikError, setTopikError] = useState(false);
   const [tglError, setTglError] = useState(false);
@@ -172,10 +178,19 @@ export default function SheetModal({ course, row }: Props) {
       jam: [mulai, selesai],
       topik: topik.trim(),
       metode,
-      dosen,
+      dosen: isMultiDosenCourse ? dosenList.join(", ") : (dosenList[0] || ""),
       kehadiran,
       hadir: course.mhs - absentList.length,
       absents: mappedAbsents,
+    });
+  };
+
+  const toggleDosen = (nama: string) => {
+    setDosenList((prev) => {
+      if (prev.includes(nama)) {
+        return prev.filter((item) => item !== nama);
+      }
+      return [...prev, nama];
     });
   };
 
@@ -246,12 +261,34 @@ export default function SheetModal({ course, row }: Props) {
               </label>
             </div>
             <div className="row c2">
-              <label className="f"><span>Dosen yang mengajar</span>
-                <select value={dosen} onChange={(e) => setDosen(e.target.value)}>
-                  {courseLecturers.map((d) => <option key={d} value={d}>{d}</option>)}
-                  {dosen && !courseLecturers.includes(dosen) && <option value={dosen}>{dosen}</option>}
-                </select>
-              </label>
+              {isMultiDosenCourse ? (
+                <label className="f"><span>Dosen yang mengajar</span>
+                  <div className="dosen-picker">
+                    <div className="dosen-picker-header">
+                      <span>{dosenList.length > 0 ? `${dosenList.length} dosen dipilih` : "Belum ada dosen dipilih"}</span>
+                    </div>
+                    <div className="dosen-picker-list">
+                      {courseLecturers.map((d) => (
+                        <label key={d} className={`dosen-option ${dosenList.includes(d) ? "active" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={dosenList.includes(d)}
+                            onChange={() => toggleDosen(d)}
+                          />
+                          <span>{d}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </label>
+              ) : (
+                <label className="f"><span>Dosen yang mengajar</span>
+                  <select value={dosenList[0] || ""} onChange={(e) => setDosenList(e.target.value ? [e.target.value] : [])}>
+                    {courseLecturers.map((d) => <option key={d} value={d}>{d}</option>)}
+                    {dosenList[0] && !courseLecturers.includes(dosenList[0]) && <option value={dosenList[0]}>{dosenList[0]}</option>}
+                  </select>
+                </label>
+              )}
               <label className="f"><span>Kehadiran dosen <em>· pengganti tanda tangan</em></span>
                 <select value={kehadiran} onChange={(e) => setKehadiran(e.target.value as Kehadiran)}>
                   {KEHADIRAN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -338,7 +375,7 @@ export default function SheetModal({ course, row }: Props) {
                               ? "Mengunggah…"
                               : a.fileUrl
                                 ? "Ganti"
-                                : `Unggah surat ${a.status === "sakit" ? "sakit" : "izin"}`}
+                                : `Unggah surat ${a.status === "sakit" ? "sakit" : "izin"} (maks. 1 MB)`}
                           </label>
                         </div>
                       )}

@@ -31,7 +31,7 @@ function CoursePage({ m }: CoursePageProps) {
         </div>
         <div>
           <b>Tingkat / semester</b> : {m.kelas} / Semester {m.semester}<br />
-          <b>Semester / T.A.</b> : Genap 2025/2026<br />
+          <b>Semester / T.A.</b> : Ganjil 2026/2027<br />
           <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
             <b style={{ whiteSpace: "nowrap" }}>Dosen</b> :
             <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>

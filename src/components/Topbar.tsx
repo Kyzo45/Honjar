@@ -2,12 +2,12 @@
 
 import { useApp } from "@/context/AppContext";
 
-const SEMESTER_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
+const SEMESTER_OPTIONS = [1, 3, 5, 7];
 
 const formatSemesterLabel = (semester: number | "all") => {
-  if (semester === "all") return "Ganjil/Genap 2025/2026 · Semua semester";
+  if (semester === "all") return "Ganjil/Genap 2026/2027 · Semua semester";
   const period = semester % 2 === 0 ? "Genap" : "Ganjil";
-  return `${period} 2025/2026 · Semester ${semester}`;
+  return `${period} 2026/2027 · Semester ${semester}`;
 };
 
 export default function Topbar() {
@@ -35,7 +35,7 @@ export default function Topbar() {
             ))}
           </select>
         ) : (
-          <span className="term">2025/2026</span>
+          <span className="term">2026/2027</span>
         )}
         {view === "ledger" && (
           <button className="btn btn-sm" onClick={() => go("mk")}>

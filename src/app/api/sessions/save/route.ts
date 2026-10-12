@@ -66,6 +66,10 @@ export async function POST(req: Request) {
     }
 
     // 3. Update data pertemuan
+    const dosenPengajar = Array.isArray(patch.dosen)
+      ? patch.dosen.map((name: string) => name.trim()).filter(Boolean).join(", ")
+      : (typeof patch.dosen === "string" ? patch.dosen.trim() : "");
+
     await pool.query(
       `UPDATE pertemuan SET
         tanggal = $1,
@@ -86,7 +90,7 @@ export async function POST(req: Request) {
         jumlah_jam,
         patch.topik || null,
         patch.metode || null,
-        patch.dosen || null,
+        dosenPengajar || null,
         patch.kehadiran || null,
         pertemuanId,
       ]

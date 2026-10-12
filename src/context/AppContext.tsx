@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from "react";
 import { ROLE, TITLE } from "@/lib/roles";
+import { MAX_EVIDENCE_UPLOAD_BYTES, MAX_EVIDENCE_UPLOAD_MESSAGE } from "@/lib/upload";
 import type { Dosen, ImportMahasiswaRow, KuliahRow, Mahasiswa, MataKuliah, NewCourseInput, NewDosenInput, NewMahasiswaInput, NewPJInput, PJUser, Role, ToastMessage, ToastType, ViewId, UserSession } from "@/lib/types";
 
 interface EditingTarget {
@@ -224,6 +225,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // 2b. Unggah berkas bukti sakit/izin (dipakai SheetModal saat mengisi kehadiran mahasiswa)
   const uploadBukti = async (file: File): Promise<{ success: boolean; url?: string; originalName?: string; error?: string }> => {
+    if (file.size > MAX_EVIDENCE_UPLOAD_BYTES) {
+      showToast("error", MAX_EVIDENCE_UPLOAD_MESSAGE);
+      return { success: false, error: MAX_EVIDENCE_UPLOAD_MESSAGE };
+    }
     try {
       const formData = new FormData();
       formData.append("file", file);

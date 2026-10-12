@@ -31,7 +31,7 @@ export interface UserSession {
 }
 
 export type Metode = "Teori" | "Praktikum";
-export type MataKuliahTipe = "Teori" | "Praktikum" | "Teori & Praktikum";
+export type MataKuliahTipe = "Teori" | "Praktikum";
 
 export type Kehadiran = "hadir" | "daring" | "diganti" | "batal";
 
@@ -42,6 +42,16 @@ export interface AbsentRecord {
   status: StatusMhs;
   fileName?: string; // nama asli berkas, untuk ditampilkan
   fileUrl?: string; // path servable ke berkas terunggah, untuk dibuka/dilihat
+}
+
+export function parseDosenList(value?: string | string[] | null): string[] {
+  const raw = Array.isArray(value) ? value : [value ?? ""];
+  const names = raw
+    .flatMap((entry) => typeof entry === "string" ? entry.split(",") : [])
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(names));
 }
 
 export interface KuliahRow {

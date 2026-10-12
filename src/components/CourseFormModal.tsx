@@ -11,6 +11,7 @@ interface Props {
 }
 
 const onlyDigits = (s: string) => s.replace(/\D/g, "");
+const SEMESTER_OPTIONS = [1, 3, 5, 7];
 
 export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
   const { dosenList, pjList, courses, importMahasiswaPreview } = useApp();
@@ -24,7 +25,7 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
   const [pjIds, setPjIds] = useState<number[]>(course?.pjIds && course.pjIds.length > 0 ? course.pjIds : course?.pjId ? [course.pjId] : []);
 
   // New Fields
-  const [tipe, setTipe] = useState<"Teori" | "Praktikum" | "Teori & Praktikum">(course?.tipe || "Teori");
+  const [tipe, setTipe] = useState<"Teori" | "Praktikum">(course?.tipe || "Teori");
   const [semester, setSemester] = useState(course?.semester ? course.semester.toString() : "1");
   const [hari, setHari] = useState(course?.hari || "Senin");
   const [jamMulai, setJamMulai] = useState(course?.jamMulai || "07:00");
@@ -353,15 +354,17 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
             </div>
             <div className="row c2">
               <label className="f"><span>Tipe Mata Kuliah</span>
-                <select value={tipe} onChange={(e) => setTipe(e.target.value as "Teori" | "Praktikum" | "Teori & Praktikum")}>
+                <select value={tipe} onChange={(e) => setTipe(e.target.value as "Teori" | "Praktikum")}>
                   <option value="Teori">Teori</option>
                   <option value="Praktikum">Praktikum</option>
-                  <option value="Teori & Praktikum">Teori & Praktikum</option>
                 </select>
               </label>
               <label className="f"><span>Semester</span>
-                <input type="number" min={1} value={semester} style={borderFor("semester")}
-                  onChange={(e) => setSemester(e.target.value)} />
+                <select value={semester} style={borderFor("semester")} onChange={(e) => setSemester(e.target.value)}>
+                  {SEMESTER_OPTIONS.map((value) => (
+                    <option key={value} value={String(value)}>Semester {value}</option>
+                  ))}
+                </select>
               </label>
             </div>
             <div className="row">

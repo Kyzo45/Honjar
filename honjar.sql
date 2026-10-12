@@ -95,7 +95,7 @@ CREATE TABLE public.mata_kuliah (
     ruangan character varying(50) NOT NULL,
     koordinator character varying(100) NOT NULL,
     pj_id integer,
-    CONSTRAINT mata_kuliah_tipe_check CHECK (((tipe)::text = ANY ((ARRAY['Teori'::character varying, 'Praktikum'::character varying, 'Teori & Praktikum'::character varying])::text[])))
+    CONSTRAINT mata_kuliah_tipe_check CHECK (((tipe)::text = ANY ((ARRAY['Teori'::character varying, 'Praktikum'::character varying])::text[])))
 );
 
 CREATE TABLE public.mata_kuliah_pj (
