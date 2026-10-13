@@ -151,7 +151,7 @@ function writeGroupedSheet(
   worksheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
   worksheet.mergeCells("A1:K1");
 
-  worksheet.getCell("A2").value = `SEMESTER GENAP TA. 2025/2026`;
+  worksheet.getCell("A2").value = `SEMESTER GANJIL TA. 2026/2027`;
   worksheet.getCell("A2").font = { name: "Times New Roman", size: 10, bold: true };
   worksheet.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
   worksheet.mergeCells("A2:K2");
