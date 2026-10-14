@@ -69,6 +69,7 @@ async function collectHonorRows({ month, year }: { month?: string; year?: string
       pool.query("SELECT * FROM mata_kuliah"),
     ]);
 
+    const knownDosenNames = dosenRows.map((d: any) => d.nama);
     const statusByName = new Map<string, string>(dosenRows.map((d: any) => [d.nama, d.status_dosen]));
     const rows: any[] = [];
 
@@ -86,11 +87,11 @@ async function collectHonorRows({ month, year }: { month?: string; year?: string
           if (month !== "all" && monthNum !== month) continue;
         }
 
-        const dosenNames = parseDosenList(p.dosen_pengajar || c.koordinator);
+        const dosenNames = parseDosenList(p.dosen_pengajar || c.koordinator, knownDosenNames);
         dosenNames.forEach((dosenNama) => {
           rows.push({
             dsn: dosenNama,
-            status: statusByName.get(dosenNama) || "tetap",
+            status: statusByName.get(dosenNama),
             tgl: tglStr,
             a: p.jam_mulai ? p.jam_mulai.slice(0, 5) : "",
             b: p.jam_selesai ? p.jam_selesai.slice(0, 5) : "",

@@ -44,14 +44,45 @@ export interface AbsentRecord {
   fileUrl?: string; // path servable ke berkas terunggah, untuk dibuka/dilihat
 }
 
-export function parseDosenList(value?: string | string[] | null): string[] {
+export function parseDosenList(value?: string | string[] | null, knownNames: string[] = []): string[] {
   const raw = Array.isArray(value) ? value : [value ?? ""];
-  const names = raw
+  const names: string[] = [];
+
+  if (knownNames.length > 0) {
+    const candidates = knownNames.flatMap((name) => {
+      const fullName = name.trim();
+      const coreName = fullName.split(",", 1)[0].trim();
+      return [fullName, coreName]
+        .map((alias) => ({ name: fullName, alias: alias.toLocaleLowerCase("id-ID").replace(/[^a-z0-9]/g, "") }))
+        .filter(({ alias }) => alias.length > 0);
+    });
+
+    for (const entry of raw) {
+      if (typeof entry !== "string" || !entry.trim()) continue;
+      const normalized = entry.toLocaleLowerCase("id-ID").replace(/[^a-z0-9]/g, "");
+      let cursor = 0;
+
+      while (cursor < normalized.length) {
+        const matches = candidates
+          .map((candidate) => ({ ...candidate, index: normalized.indexOf(candidate.alias, cursor) }))
+          .filter((candidate) => candidate.index >= 0)
+          .sort((left, right) => left.index - right.index || right.alias.length - left.alias.length);
+        const match = matches[0];
+        if (!match) break;
+        names.push(match.name);
+        cursor = match.index + match.alias.length;
+      }
+
+      if (cursor === 0) names.push(entry.trim());
+    }
+
+    return Array.from(new Set(names));
+  }
+
+  return Array.from(new Set(raw
     .flatMap((entry) => typeof entry === "string" ? entry.split(",") : [])
     .map((name) => name.trim())
-    .filter(Boolean);
-
-  return Array.from(new Set(names));
+    .filter(Boolean)));
 }
 
 export interface KuliahRow {

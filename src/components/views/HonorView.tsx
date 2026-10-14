@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { fmtTgl, jamAjar, menit } from "@/lib/format";
+import { parseDosenList } from "@/lib/types";
 
 interface HonorRow {
   dsn: string; tgl: string; a: string; b: string;
@@ -28,7 +29,7 @@ const MONTHS: { value: string; label: string }[] = [
 const MONTH_LABEL: Record<string, string> = Object.fromEntries(MONTHS.map((m) => [m.value, m.label]));
 
 export default function HonorView() {
-  const { courses, showToast } = useApp();
+  const { courses, dosenList, showToast } = useApp();
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedYear, setSelectedYear] = useState("all");
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -63,10 +64,11 @@ export default function HonorView() {
         if (selectedMonth !== "all" && monthNum !== selectedMonth) return;
       }
       const mnt = menit(r.jam![0], r.jam![1]);
-      rows.push({
-        dsn: r.dosen!, tgl: r.tgl!, a: r.jam![0], b: r.jam![1],
+      const dosenNames = parseDosenList(r.dosen || m.koor, dosenList.map((dosen) => dosen.nama));
+      dosenNames.forEach((dsn) => rows.push({
+        dsn, tgl: r.tgl!, a: r.jam![0], b: r.jam![1],
         mnt, jam: jamAjar(mnt), mk: m.nama, met: r.metode!, kls: m.kelas,
-      });
+      }));
     });
   });
   rows.sort((x, y) => x.dsn.localeCompare(y.dsn) || x.tgl.localeCompare(y.tgl) || x.a.localeCompare(y.a));
