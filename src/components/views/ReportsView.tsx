@@ -32,7 +32,7 @@ const REPORTS: { id: ReportKind; label: string }[] = [
 ];
 
 export default function ReportsView() {
-  const { courses, showToast } = useApp();
+  const { courses, dosenList, showToast } = useApp();
   const [report, setReport] = useState<ReportKind>("courses");
   const [semester, setSemester] = useState("all");
   const [exporting, setExporting] = useState(false);
@@ -63,8 +63,8 @@ export default function ReportsView() {
     filteredCourses.forEach((course) => course.rows.forEach((row) => {
       if (row.tipe !== "kuliah" || !row.topik || row.kehadiran === "batal" || !row.jam) return;
       const [jamMulai, jamSelesai] = row.jam;
-      const dosenList = parseDosenList(row.dosen || course.koor);
-      dosenList.forEach((nama) => {
+      const dosenNames = parseDosenList(row.dosen || course.koor, dosenList.map((dosen) => dosen.nama));
+      dosenNames.forEach((nama) => {
         const summary = summaries.get(nama) ?? { nama, sesi: 0, jam: 0, mataKuliah: new Set<string>() };
         summary.sesi += 1;
         summary.jam += jamAjar(menit(jamMulai, jamSelesai));
@@ -73,7 +73,7 @@ export default function ReportsView() {
       });
     }));
     return Array.from(summaries.values()).sort((a, b) => b.jam - a.jam || a.nama.localeCompare(b.nama));
-  }, [filteredCourses]);
+  }, [filteredCourses, dosenList]);
 
   const attendanceRows = useMemo(() => {
     const summaries = new Map<string, StudentSummary>();
