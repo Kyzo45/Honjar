@@ -118,7 +118,7 @@ export default function MkView() {
               ))}
             </ul>
             <p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--ink-3)" }}>
-              Batas pengisian maksimal 1 bulan setelah tanggal perkuliahan. Klik kartu mata kuliah untuk mengisi.
+              Klik kartu mata kuliah untuk mengisi berita acara.
             </p>
           </div>
         </div>
@@ -128,7 +128,6 @@ export default function MkView() {
         <div className="stat"><dt>Pertemuan tercatat</dt><dd>{total}<small>/{courses.length * 14}</small></dd></div>
         <div className="stat"><dt>Pertemuan belum diisi</dt><dd>{belumDiisi}</dd></div>
         <div className="stat"><dt>Total SKS diampu</dt><dd>{totalSks}<small> SKS</small></dd></div>
-        <div className="stat"><dt>Batas input mundur</dt><dd>30<small> hari</small></dd></div>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
         <p className="eyebrow" style={{ margin: 0 }}>Kelas yang Anda pegang</p>

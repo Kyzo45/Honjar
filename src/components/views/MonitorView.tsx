@@ -34,7 +34,7 @@ function buildWAMessageSingle(m: MataKuliah, pjNama: string): string {
     `Halo Sdr/i *${pjNama}*,\n\n` +
     `Terdapat *${unfilled} pertemuan* yang belum diisi berita acaranya pada mata kuliah ` +
     `*${m.nama}* (Kelas ${m.kelas}).\n\n` +
-    `Mohon segera mengisi melalui sistem HONJAR UNJANI. Batas pengisian maks. 1 bulan setelah tanggal kuliah.\n\n` +
+    `Mohon segera mengisi melalui sistem HONJAR UNJANI.\n\n` +
     `Terima kasih. 🙏\n_— Admin Prodi TLM UNJANI_`
   );
 }

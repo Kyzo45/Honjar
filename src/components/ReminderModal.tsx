@@ -53,7 +53,7 @@ function buildWAMessage(target: ReminderTarget): string {
     `Halo Sdr/i *${target.pjNama}*,\n\n` +
     `Anda memiliki berita acara kuliah yang belum lengkap di sistem *HONJAR UNJANI*:\n\n` +
     `${courseLines}\n\n` +
-    `Mohon segera mengisi berita acara melalui sistem HONJAR. Batas pengisian maksimal 1 bulan setelah tanggal perkuliahan.\n\n` +
+    `Mohon segera mengisi berita acara melalui sistem HONJAR.\n\n` +
     `Terima kasih. 🙏\n_— Admin Prodi TLM D4 UNJANI_`
   );
 }
