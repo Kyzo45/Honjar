@@ -66,7 +66,7 @@ const USER_SESSION_KEY = "honjar_user_session";
 
 function readStoredUser(): UserSession | null {
   try {
-    const stored = window.localStorage.getItem(USER_SESSION_KEY);
+    const stored = window.sessionStorage.getItem(USER_SESSION_KEY);
     if (!stored) return null;
 
     const value = JSON.parse(stored) as Partial<UserSession>;
@@ -76,14 +76,14 @@ function readStoredUser(): UserSession | null {
       typeof value.nama !== "string" ||
       (value.role !== "admin" && value.role !== "pj")
     ) {
-      window.localStorage.removeItem(USER_SESSION_KEY);
+      window.sessionStorage.removeItem(USER_SESSION_KEY);
       return null;
     }
 
     return { ...value, id: Number(value.id) } as UserSession;
   } catch {
     try {
-      window.localStorage.removeItem(USER_SESSION_KEY);
+      window.sessionStorage.removeItem(USER_SESSION_KEY);
     } catch {}
     return null;
   }
@@ -770,7 +770,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (data.success) {
         try {
-          window.localStorage.setItem(USER_SESSION_KEY, JSON.stringify(data.user));
+          window.sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(data.user));
         } catch (storageError) {
           console.warn("Sesi tidak dapat disimpan di browser:", storageError);
         }
@@ -802,7 +802,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 6. Fungsi Logout
   const logout = () => {
     try {
-      window.localStorage.removeItem(USER_SESSION_KEY);
+      window.sessionStorage.removeItem(USER_SESSION_KEY);
     } catch (storageError) {
       console.warn("Sesi tersimpan tidak dapat dihapus dari browser:", storageError);
     }
