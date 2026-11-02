@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { buildInitialCourses } from "@/lib/data";
 import { generateHonorExcel } from "@/lib/generateExcel";
 import { parseDosenList } from "@/lib/types";
 
@@ -25,41 +24,6 @@ function formatTglId(tglStr: string): string {
   const day = d.getDate();
   const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
   return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function buildFallbackRows({ month, year }: { month?: string; year?: string }) {
-  const rows: any[] = [];
-  const mockCourses = buildInitialCourses();
-
-  mockCourses.forEach((m: any) => {
-    m.rows.forEach((r: any) => {
-      if (r.tipe !== "kuliah" || !r.topik) return;
-      if (r.kehadiran === "batal") return;
-      if (r.tgl) {
-        const [yearNum, monthNum] = r.tgl.split("-");
-        if (year && year !== "all" && yearNum !== year) return;
-        if (month !== "all" && monthNum !== month) return;
-      }
-
-      const dosenNames = parseDosenList(r.dosen || m.koor);
-      dosenNames.forEach((nama) => {
-        rows.push({
-          dsn: nama,
-          status: m.koor === nama ? "tetap" : "luar",
-          tgl: r.tgl,
-          a: Array.isArray(r.jam) ? r.jam[0] : "",
-          b: Array.isArray(r.jam) ? r.jam[1] : "",
-          mnt: r.mnt || 100,
-          jam: r.jamAjar || 2,
-          mk: m.nama,
-          met: r.metode || m.tipe,
-          kls: m.kelas,
-        });
-      });
-    });
-  });
-
-  return rows;
 }
 
 async function collectHonorRows({ month, year }: { month?: string; year?: string }) {
@@ -105,11 +69,10 @@ async function collectHonorRows({ month, year }: { month?: string; year?: string
       }
     }
 
-    if (rows.length > 0) return rows;
-    return buildFallbackRows({ month, year });
+    return rows;
   } catch (error: any) {
-    console.warn("Database export unavailable, menggunakan data fallback untuk Excel:", error?.message || error);
-    return buildFallbackRows({ month, year });
+    console.error("Database export unavailable:", error?.message || error);
+    throw error;
   }
 }
 

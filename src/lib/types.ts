@@ -44,11 +44,34 @@ export interface AbsentRecord {
   fileUrl?: string; // path servable ke berkas terunggah, untuk dibuka/dilihat
 }
 
-export function parseDosenList(value?: string | string[] | null, knownNames: string[] = []): string[] {
-  const raw = Array.isArray(value) ? value : [value ?? ""];
+export function removeRepeatedDosenNames(value: string): string {
+  const normalized = value.toLocaleLowerCase("id-ID").replace(/[^a-z0-9]/g, "");
+  if (!normalized) return "";
+
+  for (let unitLength = 1; unitLength <= normalized.length / 2; unitLength++) {
+    if (normalized.length % unitLength !== 0) continue;
+    const unit = normalized.slice(0, unitLength);
+    if (unit.repeat(normalized.length / unitLength) !== normalized) continue;
+
+    let characterCount = 0;
+    for (let index = 0; index < value.length; index++) {
+      if (/[a-z0-9]/i.test(value[index])) characterCount++;
+      if (characterCount === unitLength) {
+        return value.slice(0, index + 1).replace(/[\s,;|]+$/, "").trim();
+      }
+    }
+  }
+
+  return value.trim();
+}
+
+export function parseDosenList(value?: string | string[] | null, knownNames?: string[]): string[] {
+  const raw = (Array.isArray(value) ? value : [value ?? ""]).map((entry) =>
+    typeof entry === "string" ? removeRepeatedDosenNames(entry) : entry
+  );
   const names: string[] = [];
 
-  if (knownNames.length > 0) {
+  if (knownNames !== undefined) {
     const candidates = knownNames.flatMap((name) => {
       const fullName = name.trim();
       const coreName = fullName.split(",", 1)[0].trim();
@@ -73,7 +96,6 @@ export function parseDosenList(value?: string | string[] | null, knownNames: str
         cursor = match.index + match.alias.length;
       }
 
-      if (cursor === 0) names.push(entry.trim());
     }
 
     return Array.from(new Set(names));

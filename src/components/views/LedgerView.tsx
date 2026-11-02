@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { fmtTgl, jamAjar, menit } from "@/lib/format";
 import type { Kehadiran, Row } from "@/lib/types";
@@ -12,7 +13,15 @@ const KEHADIRAN: Record<Kehadiran, [string, string]> = {
 };
 
 export default function LedgerView() {
-  const { curMK, openSheet } = useApp();
+  const { curMK, openSheet, deleteMeeting, user } = useApp();
+  const [deletingKe, setDeletingKe] = useState<number | null>(null);
+
+  const handleDelete = async (ke: number) => {
+    if (!confirm(`Hapus isi pertemuan ke-${ke} pada ${curMK.nama} kelas ${curMK.kelas}? Data presensi sesi ini juga akan dihapus.`)) return;
+    setDeletingKe(ke);
+    await deleteMeeting(curMK.id, ke);
+    setDeletingKe(null);
+  };
 
   let isi = 0, jam = 0, hadirSum = 0;
   curMK.rows.forEach((r: Row) => {
@@ -87,6 +96,16 @@ export default function LedgerView() {
                       </td>
                       <td className="c-act">
                         <button className="btn btn-sm" onClick={() => openSheet(curMK.id, r.ke)}>✎ Ubah</button>
+                        {user?.role === "pj" && (
+                          <button
+                            className="btn btn-sm"
+                            style={{ color: "var(--rose)", marginLeft: "4px" }}
+                            disabled={deletingKe === r.ke}
+                            onClick={() => handleDelete(r.ke)}
+                          >
+                            {deletingKe === r.ke ? "Menghapus..." : "Hapus"}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

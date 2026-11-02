@@ -129,7 +129,7 @@ CREATE TABLE public.pertemuan (
     jumlah_jam integer,
     topik text,
     metode character varying(20),
-    dosen_pengajar character varying(100),
+    dosen_pengajar text,
     kehadiran_dosen character varying(20),
     jumlah_hadir_mhs integer DEFAULT 0,
     CONSTRAINT pertemuan_ke_check CHECK (((ke >= 1) AND (ke <= 16))),
