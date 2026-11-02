@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { fmtTgl, formatWAUrl } from "@/lib/format";
 import type { KuliahRow, MataKuliah } from "@/lib/types";
@@ -42,6 +42,21 @@ function buildWAMessageSingle(m: MataKuliah, pjNama: string): string {
 export default function MonitorView() {
   const { courses, pjList } = useApp();
   const [showReminder, setShowReminder] = useState(false);
+  const [pjQuery, setPjQuery] = useState("");
+
+  const filteredCourses = useMemo(() => {
+    const query = pjQuery.trim().toLocaleLowerCase("id-ID");
+    if (!query) return courses;
+
+    return courses.filter((course) => {
+      const selectedPjIds = course.pjIds?.length ? course.pjIds : (course.pjId ? [course.pjId] : []);
+      const assignedNames = selectedPjIds
+        .map((id) => pjList.find((pj) => pj.id === id)?.nama)
+        .filter((name): name is string => Boolean(name));
+      return [course.pj, ...(course.pjNames || []), ...assignedNames]
+        .some((name) => name.toLocaleLowerCase("id-ID").includes(query));
+    });
+  }, [courses, pjList, pjQuery]);
 
   return (
     <section className="view">
@@ -55,7 +70,22 @@ export default function MonitorView() {
       <div className="panel">
         <div className="panel-h">
           <h2>Kelengkapan berita acara</h2>
-          <div className="right">
+          <div className="right" style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            <input
+              type="search"
+              value={pjQuery}
+              onChange={(e) => setPjQuery(e.target.value)}
+              placeholder="Cari nama PJ..."
+              aria-label="Cari berdasarkan nama PJ"
+              style={{
+                padding: "6px 10px",
+                fontSize: "12.5px",
+                borderRadius: "var(--r)",
+                border: "1px solid var(--rule)",
+                background: "var(--paper)",
+                minWidth: "220px"
+              }}
+            />
             <button className="btn btn-sm btn-p" onClick={() => setShowReminder(true)}>
               💬 Kirim Pengingat ke Penanggung Jawab
             </button>
@@ -70,7 +100,7 @@ export default function MonitorView() {
             </tr>
           </thead>
           <tbody>
-            {courses.map((m) => {
+            {filteredCourses.map((m) => {
               const isi = m.rows.filter((r) => r.tipe === "kuliah" && r.topik).length;
               const unfilled = 14 - isi;
               const pct = Math.round((isi / 14) * 100);
@@ -117,6 +147,13 @@ export default function MonitorView() {
                 </tr>
               );
             })}
+            {filteredCourses.length === 0 && (
+              <tr>
+                <td colSpan={7} style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px" }}>
+                  Tidak ada PJ yang cocok dengan &quot;{pjQuery}&quot;.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

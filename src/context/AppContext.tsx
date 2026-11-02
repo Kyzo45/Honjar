@@ -24,6 +24,7 @@ interface AppState {
   pjList: PJUser[];
   mahasiswaList: Mahasiswa[];
   loading: boolean;
+  authReady: boolean;
   user: UserSession | null;
   setRole: (r: Role) => void;
   go: (v: ViewId) => void;
@@ -31,6 +32,7 @@ interface AppState {
   openSheet: (courseId: number, ke: number) => void;
   closeSheet: () => void;
   saveRow: (courseId: number, ke: number, patch: Partial<KuliahRow>) => void;
+  deleteMeeting: (courseId: number, ke: number) => Promise<{ success: boolean; error?: string }>;
   uploadBukti: (file: File) => Promise<{ success: boolean; url?: string; originalName?: string; error?: string }>;
   addCourse: (input: NewCourseInput) => Promise<{ success: boolean; error?: string }>;
   updateCourse: (id: number, input: NewCourseInput) => Promise<{ success: boolean; error?: string }>;
@@ -60,6 +62,32 @@ interface AppState {
 }
 
 const AppContext = createContext<AppState | null>(null);
+const USER_SESSION_KEY = "honjar_user_session";
+
+function readStoredUser(): UserSession | null {
+  try {
+    const stored = window.localStorage.getItem(USER_SESSION_KEY);
+    if (!stored) return null;
+
+    const value = JSON.parse(stored) as Partial<UserSession>;
+    if (
+      !Number.isFinite(Number(value.id)) ||
+      typeof value.username !== "string" ||
+      typeof value.nama !== "string" ||
+      (value.role !== "admin" && value.role !== "pj")
+    ) {
+      window.localStorage.removeItem(USER_SESSION_KEY);
+      return null;
+    }
+
+    return { ...value, id: Number(value.id) } as UserSession;
+  } catch {
+    try {
+      window.localStorage.removeItem(USER_SESSION_KEY);
+    } catch {}
+    return null;
+  }
+}
 
 const DEFAULT_MK: MataKuliah = {
   id: 0,
@@ -91,6 +119,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [pjList, setPjList] = useState<PJUser[]>([]);
   const [mahasiswaList, setMahasiswaList] = useState<Mahasiswa[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState<UserSession | null>(null);
   const [role, setRoleState] = useState<Role>("pj");
   const [view, setView] = useState<ViewId>("mk");
@@ -123,18 +152,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [resL, resPJ, resM] = await Promise.all([
-          fetch("/api/lecturers").then((r) => r.json()),
-          fetch("/api/pj").then((r) => r.json()),
-          fetch("/api/mahasiswa").then((r) => r.json())
+        const restoredUser = readStoredUser();
+        if (restoredUser) {
+          setUser(restoredUser);
+          setRoleState(restoredUser.role);
+          setView(restoredUser.role === "admin" ? "honor" : "mk");
+        }
+
+        const coursesUrl = restoredUser?.role === "pj"
+          ? `/api/courses?pjId=${restoredUser.id}`
+          : "/api/courses";
+        const [resL, resPJ, resM, resCourses] = await Promise.all([
+          fetch("/api/lecturers").then((r) => r.json()).catch(() => null),
+          fetch("/api/pj").then((r) => r.json()).catch(() => null),
+          fetch("/api/mahasiswa").then((r) => r.json()).catch(() => null),
+          restoredUser
+            ? fetch(coursesUrl).then((r) => r.json()).catch(() => null)
+            : Promise.resolve(null),
         ]);
         if (Array.isArray(resL)) setDosenList(resL);
         if (Array.isArray(resPJ)) setPjList(resPJ);
         if (Array.isArray(resM)) setMahasiswaList(resM);
+        if (Array.isArray(resCourses)) setCourses(resCourses);
       } catch (err) {
         console.error("Gagal mengambil data dari database:", err);
       } finally {
         setLoading(false);
+        setAuthReady(true);
       }
     }
     loadInitialData();
@@ -220,6 +264,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Gagal sinkronisasi simpan pertemuan:", err);
       showToast("error", "Gagal terhubung ke server");
+    }
+  };
+
+  const deleteMeeting = async (courseId: number, ke: number): Promise<{ success: boolean; error?: string }> => {
+    if (!user || user.role !== "pj") {
+      return { success: false, error: "Hanya akun PJ yang dapat menghapus pertemuan." };
+    }
+
+    try {
+      const response = await fetch("/api/sessions/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId, ke, pjId: user.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        const error = data.error || "Gagal menghapus pertemuan.";
+        showToast("error", error);
+        return { success: false, error };
+      }
+
+      setCourses((prev) => prev.map((course) => course.id !== courseId ? course : {
+        ...course,
+        rows: course.rows.map((row) => row.ke !== ke || row.tipe !== "kuliah" ? row : {
+          ...row,
+          tgl: undefined,
+          jam: undefined,
+          hadir: undefined,
+          topik: undefined,
+          metode: undefined,
+          dosen: undefined,
+          kehadiran: undefined,
+          absents: [],
+          isAbsenAktif: false,
+        }),
+      }));
+      showToast("success", "Isi pertemuan berhasil dihapus.");
+      return { success: true };
+    } catch (error) {
+      console.error("Gagal menghapus isi pertemuan:", error);
+      showToast("error", "Gagal terhubung ke server.");
+      return { success: false, error: "Gagal terhubung ke server." };
     }
   };
 
@@ -683,8 +769,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (data.success) {
+        try {
+          window.localStorage.setItem(USER_SESSION_KEY, JSON.stringify(data.user));
+        } catch (storageError) {
+          console.warn("Sesi tidak dapat disimpan di browser:", storageError);
+        }
         setUser(data.user);
         setRoleState(data.user.role);
+        setAuthReady(true);
         setCourses([]);
         
         // Fetch courses khusus: mahasiswa lihat kelas KRS-nya, PJ lihat mata kuliah yang dia tanggung jawabkan
@@ -709,6 +801,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // 6. Fungsi Logout
   const logout = () => {
+    try {
+      window.localStorage.removeItem(USER_SESSION_KEY);
+    } catch (storageError) {
+      console.warn("Sesi tersimpan tidak dapat dihapus dari browser:", storageError);
+    }
     setUser(null);
     setCourses([]);
     setView("mk");
@@ -720,8 +817,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value: AppState = {
     role, view, courses, curMK, title, sub,
-    editing, editingRow, lecturers, dosenList, pjList, mahasiswaList, loading, user,
-    setRole, go, selectCourse, openSheet, closeSheet, saveRow, uploadBukti, addCourse, updateCourse, deleteCourse, addDosen, updateDosen, deleteDosen,
+    editing, editingRow, lecturers, dosenList, pjList, mahasiswaList, loading, authReady, user,
+    setRole, go, selectCourse, openSheet, closeSheet, saveRow, deleteMeeting, uploadBukti, addCourse, updateCourse, deleteCourse, addDosen, updateDosen, deleteDosen,
     addPJ, updatePJ, deletePJ,
     addMahasiswa, updateMahasiswa, deleteMahasiswa, importMahasiswaPreview, importMahasiswaCommit,
     addToRoster, removeFromRoster,

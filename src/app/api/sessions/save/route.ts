@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { todayISO } from "@/lib/format";
+import { removeRepeatedDosenNames } from "@/lib/types";
 
 function calculateMenit(a: string, b: string): number {
   const p = (s: string) => {
@@ -63,9 +64,10 @@ export async function POST(req: Request) {
     }
 
     // 3. Update data pertemuan
-    const dosenPengajar = Array.isArray(patch.dosen)
+    const rawDosen = Array.isArray(patch.dosen)
       ? patch.dosen.map((name: string) => name.trim()).filter(Boolean).join(", ")
-      : (typeof patch.dosen === "string" ? patch.dosen.trim() : "");
+      : (typeof patch.dosen === "string" ? patch.dosen : "");
+    const dosenPengajar = removeRepeatedDosenNames(rawDosen);
 
     await pool.query(
       `UPDATE pertemuan SET

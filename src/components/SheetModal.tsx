@@ -57,11 +57,11 @@ export default function SheetModal({ course, row }: Props) {
   const [topik, setTopik] = useState(row.topik || "");
 
   const isMultiDosenCourse = course.tipe === "Praktikum";
-  const parsedDosen = parseDosenList(row.dosen || courseLecturers[0] || "");
+  const parsedDosen = parseDosenList(row.dosen, courseLecturers);
 
   // Multi-dosen hanya berlaku untuk mata kuliah praktikum; teori tetap satu dosen.
   const [dosenList, setDosenList] = useState<string[]>(
-    parsedDosen.length > 0 ? parsedDosen : (courseLecturers[0] ? [courseLecturers[0]] : [])
+    parsedDosen.length > 0 ? parsedDosen : (isMultiDosenCourse ? [] : (courseLecturers[0] ? [courseLecturers[0]] : []))
   );
   const [kehadiran, setKehadiran] = useState<Kehadiran>(row.kehadiran || "hadir");
   const [topikError, setTopikError] = useState(false);

@@ -19,7 +19,15 @@ import LoginView from "@/components/views/LoginView";
 import ToastContainer from "@/components/Toast";
 
 function Shell() {
-  const { view, courses, editing, editingRow, user, menuOpen, setMenuOpen } = useApp();
+  const { view, courses, editing, editingRow, user, authReady, menuOpen, setMenuOpen } = useApp();
+
+  if (!authReady) {
+    return (
+      <div role="status" style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "var(--paper)", color: "var(--ink-2)" }}>
+        Memuat sesi...
+      </div>
+    );
+  }
 
   // Jika belum login, tampilkan halaman Login
   if (!user) {
