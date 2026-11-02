@@ -11,6 +11,9 @@ const pool = new Pool(
         ssl: isLocalDatabase(connectionString)
           ? false
           : { rejectUnauthorized: false },
+        connectionTimeoutMillis: 10_000,
+        query_timeout: 30_000,
+        statement_timeout: 30_000,
       }
     : {
         host: process.env.DB_HOST || "localhost",
@@ -19,6 +22,9 @@ const pool = new Pool(
         password: process.env.DB_PASSWORD || "root",
         database: process.env.DB_NAME || "honjar",
         ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+        connectionTimeoutMillis: 10_000,
+        query_timeout: 30_000,
+        statement_timeout: 30_000,
       }
 );
 

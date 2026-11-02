@@ -78,111 +78,156 @@ export async function GET(req: Request) {
       coursesList = rows;
     }
 
-    const fullCourses: MataKuliah[] = [];
+    if (coursesList.length === 0) return NextResponse.json([]);
 
-    for (const c of coursesList) {
-      // 2. Ambil nama dosen pengampu
-      const { rows: dosenRows } = await pool.query(
-        "SELECT d.nama FROM dosen d JOIN dosen_mata_kuliah dmk ON d.id = dmk.dosen_id WHERE dmk.mata_kuliah_id = $1",
-        [c.id]
-      );
-      const dosen = dosenRows.map((r: any) => r.nama);
+    const courseIds = coursesList.map((course) => Number(course.id));
+    const [{ rows: lecturerRows }, { rows: pjRows }, { rows: rosterRows }, { rows: meetingRows }] = await Promise.all([
+      pool.query(
+        `SELECT dmk.mata_kuliah_id, d.nama
+         FROM dosen_mata_kuliah dmk
+         JOIN dosen d ON d.id = dmk.dosen_id
+         WHERE dmk.mata_kuliah_id = ANY($1::integer[])
+         ORDER BY d.nama ASC`,
+        [courseIds]
+      ),
+      pool.query(
+        `SELECT mpj.mata_kuliah_id, u.id, u.nama
+         FROM mata_kuliah_pj mpj
+         JOIN users u ON u.id = mpj.pj_id
+         WHERE mpj.mata_kuliah_id = ANY($1::integer[])
+         ORDER BY u.nama ASC`,
+        [courseIds]
+      ),
+      pool.query(
+        `SELECT k.mata_kuliah_id, m.nim, m.nama, m.angkatan
+         FROM krs k
+         JOIN mahasiswa m ON m.nim = k.mahasiswa_nim
+         WHERE k.mata_kuliah_id = ANY($1::integer[])
+         ORDER BY m.nama ASC`,
+        [courseIds]
+      ),
+      pool.query(
+        "SELECT * FROM pertemuan WHERE mata_kuliah_id = ANY($1::integer[]) ORDER BY mata_kuliah_id, ke",
+        [courseIds]
+      ),
+    ]);
 
-      // 3. Ambil daftar PJ (banyak PJ didukung lewat relasi mata_kuliah_pj,
-      // sementara pj_id tetap dipertahankan untuk kompatibilitas kode lama).
-      const { rows: pjRelRows } = await pool.query(
-        `SELECT u.id, u.nama FROM users u
-         JOIN mata_kuliah_pj mpj ON mpj.pj_id = u.id
-         WHERE mpj.mata_kuliah_id = $1 ORDER BY u.nama ASC`,
-        [c.id]
-      );
-      const pjIds = pjRelRows.length > 0 ? pjRelRows.map((r: any) => Number(r.id)) : (c.pj_id ? [Number(c.pj_id)] : []);
-      const pjNames = pjRelRows.length > 0 ? pjRelRows.map((r: any) => r.nama) : (c.pj_id ? [((await pool.query("SELECT nama FROM users WHERE id = $1", [c.pj_id])).rows[0]?.nama) || "—"] : []);
-      const pj = pjNames.join(", ") || "—";
-      const pjId: number | null = pjIds[0] ?? null;
+    const legacyPjIds = [...new Set(coursesList.map((course) => Number(course.pj_id)).filter((id) => id > 0))];
+    const legacyPjRows = legacyPjIds.length > 0
+      ? (await pool.query("SELECT id, nama FROM users WHERE id = ANY($1::integer[])", [legacyPjIds])).rows
+      : [];
+    const legacyPjNames = new Map<number, string>(legacyPjRows.map((row) => [Number(row.id), row.nama]));
 
-      // 4. Ambil roster peserta (lewat KRS) — satu mahasiswa bisa muncul di roster
-      // banyak mata kuliah, jadi ini query langsung per mata kuliah, bukan lewat
-      // pencocokan field kelas manapun.
-      const { rows: rosterRows } = await pool.query(
-        `SELECT m.nim, m.nama, m.angkatan FROM mahasiswa m
-         JOIN krs k ON k.mahasiswa_nim = m.nim
-         WHERE k.mata_kuliah_id = $1 ORDER BY m.nama ASC`,
-        [c.id]
-      );
-      const roster = rosterRows.map((r: any) => ({ nim: r.nim, nama: r.nama, angkatan: r.angkatan || "" }));
-      const mhs = roster.length;
+    const meetings = meetingRows;
+    const meetingIds = meetings.map((meeting) => Number(meeting.id));
+    const absentRows = meetingIds.length > 0
+      ? (await pool.query(
+          `SELECT pertemuan_id, mahasiswa_nim AS nim, status,
+                  file_bukti AS "fileUrl", file_nama_asli AS "fileName"
+           FROM kehadiran_mahasiswa
+           WHERE pertemuan_id = ANY($1::integer[]) AND status != 'hadir'`,
+          [meetingIds]
+        )).rows
+      : [];
 
-      // 5. Ambil daftar pertemuan (rows)
-      const { rows: pList } = await pool.query(
-        "SELECT * FROM pertemuan WHERE mata_kuliah_id = $1 ORDER BY ke",
-        [c.id]
-      );
+    const lecturersByCourse = new Map<number, string[]>();
+    lecturerRows.forEach((row) => {
+      const list = lecturersByCourse.get(Number(row.mata_kuliah_id)) ?? [];
+      list.push(row.nama);
+      lecturersByCourse.set(Number(row.mata_kuliah_id), list);
+    });
 
-      const rows: Row[] = [];
-      for (const p of pList) {
-        if (p.tipe === "uts" || p.tipe === "uas") {
-          rows.push({
-            ke: p.ke,
-            tipe: p.tipe,
-          });
-        } else {
-          // Ambil absensi mahasiswa jika sesi diisi
-          let absents: AbsentRecord[] = [];
-          if (p.topik) {
-            const { rows: absentRows } = await pool.query(
-              'SELECT mahasiswa_nim as nim, status, file_bukti as "fileUrl", file_nama_asli as "fileName" FROM kehadiran_mahasiswa WHERE pertemuan_id = $1 AND status != \'hadir\'',
-              [p.id]
-            );
-            absents = absentRows.map((r: any) => ({
-              nim: r.nim,
-              status: r.status,
-              fileName: r.fileName || undefined,
-              fileUrl: r.fileUrl || undefined,
-            }));
-          }
+    const pjByCourse = new Map<number, { id: number; nama: string }[]>();
+    pjRows.forEach((row) => {
+      const list = pjByCourse.get(Number(row.mata_kuliah_id)) ?? [];
+      list.push({ id: Number(row.id), nama: row.nama });
+      pjByCourse.set(Number(row.mata_kuliah_id), list);
+    });
 
-          rows.push({
-            ke: p.ke,
-            tipe: "kuliah",
-            tgl: formatDate(p.tanggal),
-            jam: p.jam_mulai && p.jam_selesai
-              ? [p.jam_mulai.slice(0, 5), p.jam_selesai.slice(0, 5)]
-              : undefined,
-            hadir: p.topik ? mhs - absents.length : undefined,
-            topik: p.topik || undefined,
-            metode: p.metode || undefined,
-            dosen: p.dosen_pengajar || undefined,
-            kehadiran: p.kehadiran_dosen || undefined,
-            absents,
-            isAbsenAktif: !!p.kode_absen_aktif,
-          });
+    const rosterByCourse = new Map<number, { nim: string; nama: string; angkatan: string }[]>();
+    rosterRows.forEach((row) => {
+      const list = rosterByCourse.get(Number(row.mata_kuliah_id)) ?? [];
+      list.push({ nim: row.nim, nama: row.nama, angkatan: row.angkatan || "" });
+      rosterByCourse.set(Number(row.mata_kuliah_id), list);
+    });
+
+    const absentsByMeeting = new Map<number, AbsentRecord[]>();
+    absentRows.forEach((row) => {
+      const meetingId = Number(row.pertemuan_id);
+      const list = absentsByMeeting.get(meetingId) ?? [];
+      list.push({
+        nim: row.nim,
+        status: row.status,
+        fileName: row.fileName || undefined,
+        fileUrl: row.fileUrl || undefined,
+      });
+      absentsByMeeting.set(meetingId, list);
+    });
+
+    const meetingsByCourse = new Map<number, typeof meetings>();
+    meetings.forEach((meeting) => {
+      const list = meetingsByCourse.get(Number(meeting.mata_kuliah_id)) ?? [];
+      list.push(meeting);
+      meetingsByCourse.set(Number(meeting.mata_kuliah_id), list);
+    });
+
+    const fullCourses: MataKuliah[] = coursesList.map((course) => {
+      const courseId = Number(course.id);
+      const roster = rosterByCourse.get(courseId) ?? [];
+      const assignedPjs = pjByCourse.get(courseId) ?? [];
+      const pjIds = assignedPjs.length > 0
+        ? assignedPjs.map((pj) => pj.id)
+        : (course.pj_id ? [Number(course.pj_id)] : []);
+      const pjNames = assignedPjs.length > 0
+        ? assignedPjs.map((pj) => pj.nama)
+        : (course.pj_id
+          ? [legacyPjNames.get(Number(course.pj_id)) || "—"]
+          : []);
+      const rows: Row[] = (meetingsByCourse.get(courseId) ?? []).map((meeting) => {
+        if (meeting.tipe === "uts" || meeting.tipe === "uas") {
+          return { ke: meeting.ke, tipe: meeting.tipe };
         }
-      }
 
-      fullCourses.push({
-        id: c.id,
-        kode: c.kode,
-        nama: c.nama,
-        kelas: c.kelas,
-        sks: c.sks,
-        koor: c.koordinator,
-        dosen,
-        mhs,
+        const absents = meeting.topik ? absentsByMeeting.get(Number(meeting.id)) ?? [] : [];
+        return {
+          ke: meeting.ke,
+          tipe: "kuliah",
+          tgl: formatDate(meeting.tanggal),
+          jam: meeting.jam_mulai && meeting.jam_selesai
+            ? [meeting.jam_mulai.slice(0, 5), meeting.jam_selesai.slice(0, 5)]
+            : undefined,
+          hadir: meeting.topik ? roster.length - absents.length : undefined,
+          topik: meeting.topik || undefined,
+          metode: meeting.metode || undefined,
+          dosen: meeting.dosen_pengajar || undefined,
+          kehadiran: meeting.kehadiran_dosen || undefined,
+          absents,
+          isAbsenAktif: !!meeting.kode_absen_aktif,
+        };
+      });
+      return {
+        id: course.id,
+        kode: course.kode,
+        nama: course.nama,
+        kelas: course.kelas,
+        sks: course.sks,
+        koor: course.koordinator,
+        dosen: lecturersByCourse.get(courseId) ?? [],
+        mhs: roster.length,
         roster,
-        pj,
-        pjId,
+        pj: pjNames.join(", ") || "—",
+        pjId: pjIds[0] ?? null,
         pjIds,
         pjNames,
         rows,
-        tipe: c.tipe as "Teori" | "Praktikum",
-        semester: c.semester,
-        hari: c.hari,
-        jamMulai: c.jam_mulai ? c.jam_mulai.slice(0, 5) : "—",
-        jamSelesai: c.jam_selesai ? c.jam_selesai.slice(0, 5) : "—",
-        ruangan: c.ruangan,
-      });
-    }
+        tipe: course.tipe as "Teori" | "Praktikum",
+        semester: course.semester,
+        hari: course.hari,
+        jamMulai: course.jam_mulai ? course.jam_mulai.slice(0, 5) : "—",
+        jamSelesai: course.jam_selesai ? course.jam_selesai.slice(0, 5) : "—",
+        ruangan: course.ruangan,
+      };
+    });
 
     return NextResponse.json(fullCourses);
   } catch (error: any) {
