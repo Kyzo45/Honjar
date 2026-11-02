@@ -96,6 +96,7 @@ export function parseDosenList(value?: string | string[] | null, knownNames?: st
         cursor = match.index + match.alias.length;
       }
 
+      if (cursor === 0) names.push(entry.trim());
     }
 
     return Array.from(new Set(names));
