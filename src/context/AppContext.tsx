@@ -32,6 +32,8 @@ interface AppState {
   openSheet: (courseId: number, ke: number) => void;
   closeSheet: () => void;
   saveRow: (courseId: number, ke: number, patch: Partial<KuliahRow>) => void;
+  addMeeting: (courseId: number) => Promise<{ success: boolean; ke?: number; error?: string }>;
+  removeExtraMeeting: (courseId: number) => Promise<{ success: boolean; ke?: number; error?: string }>;
   deleteMeeting: (courseId: number, ke: number) => Promise<{ success: boolean; error?: string }>;
   uploadBukti: (file: File) => Promise<{ success: boolean; url?: string; originalName?: string; error?: string }>;
   addCourse: (input: NewCourseInput) => Promise<{ success: boolean; error?: string }>;
@@ -264,6 +266,68 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Gagal sinkronisasi simpan pertemuan:", err);
       showToast("error", "Gagal terhubung ke server");
+    }
+  };
+
+  const addMeeting = async (courseId: number): Promise<{ success: boolean; ke?: number; error?: string }> => {
+    if (!user || user.role !== "pj") {
+      return { success: false, error: "Hanya akun PJ yang dapat menambah pertemuan." };
+    }
+
+    try {
+      const response = await fetch("/api/sessions/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId, pjId: user.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        const error = data.error || "Gagal menambah pertemuan.";
+        showToast("error", error);
+        return { success: false, error };
+      }
+
+      setCourses((prev) => prev.map((course) => course.id !== courseId ? course : {
+        ...course,
+        rows: [...course.rows, { ke: data.ke, tipe: "kuliah", absents: [] }],
+      }));
+      showToast("success", `Kolom pertemuan ke-${data.ke} berhasil ditambahkan.`);
+      return { success: true, ke: data.ke };
+    } catch (error) {
+      console.error("Gagal menambah pertemuan:", error);
+      showToast("error", "Gagal terhubung ke server.");
+      return { success: false, error: "Gagal terhubung ke server." };
+    }
+  };
+
+  const removeExtraMeeting = async (courseId: number): Promise<{ success: boolean; ke?: number; error?: string }> => {
+    if (!user || user.role !== "pj") {
+      return { success: false, error: "Hanya akun PJ yang dapat menghapus kolom tambahan." };
+    }
+
+    try {
+      const response = await fetch("/api/sessions/remove-extra", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId, pjId: user.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        const error = data.error || "Gagal menghapus kolom tambahan.";
+        showToast("error", error);
+        return { success: false, error };
+      }
+
+      setCourses((prev) => prev.map((course) => course.id !== courseId ? course : {
+        ...course,
+        rows: course.rows.filter((row) => row.ke !== data.ke),
+      }));
+      showToast("success", `Kolom pertemuan ke-${data.ke} berhasil dihapus.`);
+      return { success: true, ke: data.ke };
+    } catch (error) {
+      console.error("Gagal menghapus kolom tambahan:", error);
+      showToast("error", "Gagal terhubung ke server.");
+      return { success: false, error: "Gagal terhubung ke server." };
     }
   };
 
@@ -818,7 +882,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppState = {
     role, view, courses, curMK, title, sub,
     editing, editingRow, lecturers, dosenList, pjList, mahasiswaList, loading, authReady, user,
-    setRole, go, selectCourse, openSheet, closeSheet, saveRow, deleteMeeting, uploadBukti, addCourse, updateCourse, deleteCourse, addDosen, updateDosen, deleteDosen,
+    setRole, go, selectCourse, openSheet, closeSheet, saveRow, addMeeting, removeExtraMeeting, deleteMeeting, uploadBukti, addCourse, updateCourse, deleteCourse, addDosen, updateDosen, deleteDosen,
     addPJ, updatePJ, deletePJ,
     addMahasiswa, updateMahasiswa, deleteMahasiswa, importMahasiswaPreview, importMahasiswaCommit,
     addToRoster, removeFromRoster,
