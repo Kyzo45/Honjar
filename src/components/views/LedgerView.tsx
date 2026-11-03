@@ -13,8 +13,24 @@ const KEHADIRAN: Record<Kehadiran, [string, string]> = {
 };
 
 export default function LedgerView() {
-  const { curMK, openSheet, deleteMeeting, user } = useApp();
+  const { curMK, openSheet, addMeeting, removeExtraMeeting, deleteMeeting, user } = useApp();
   const [deletingKe, setDeletingKe] = useState<number | null>(null);
+  const [addingMeeting, setAddingMeeting] = useState(false);
+  const [removingMeeting, setRemovingMeeting] = useState(false);
+
+  const handleAddMeeting = async () => {
+    setAddingMeeting(true);
+    const result = await addMeeting(curMK.id);
+    setAddingMeeting(false);
+    if (result.success && result.ke) openSheet(curMK.id, result.ke);
+  };
+
+  const handleRemoveExtraMeeting = async () => {
+    if (!lastRow || !confirm(`Hapus kolom pertemuan ke-${lastRow.ke} yang masih kosong?`)) return;
+    setRemovingMeeting(true);
+    await removeExtraMeeting(curMK.id);
+    setRemovingMeeting(false);
+  };
 
   const handleDelete = async (ke: number) => {
     if (!confirm(`Hapus isi pertemuan ke-${ke} pada ${curMK.nama} kelas ${curMK.kelas}? Data presensi sesi ini juga akan dihapus.`)) return;
@@ -24,6 +40,9 @@ export default function LedgerView() {
   };
 
   let isi = 0, jam = 0, hadirSum = 0;
+  const lastRow = curMK.rows[curMK.rows.length - 1];
+  const canRemoveLastAdded = lastRow?.tipe === "kuliah" && lastRow.ke > 16 && !lastRow.topik;
+  const totalPertemuan = curMK.rows.filter((r) => r.tipe === "kuliah").length;
   curMK.rows.forEach((r: Row) => {
     if (r.tipe === "kuliah" && r.topik) {
       isi++;
@@ -124,9 +143,21 @@ export default function LedgerView() {
           </table>
         </div>
         <div className="ledger-foot">
-          <span>Terisi <b>{isi}</b> dari 14 pertemuan</span>
+          <span>Terisi <b>{isi}</b> dari {totalPertemuan} pertemuan</span>
           <span>Total jam mengajar tercatat <b>{jam}</b></span>
           <span>Rata-rata kehadiran <b>{isi ? Math.round(hadirSum / isi) + " orang" : "—"}</b></span>
+          {user?.role === "pj" && (
+            <>
+              {canRemoveLastAdded && (
+                <button className="btn btn-sm" style={{ color: "var(--rose)" }} disabled={removingMeeting || addingMeeting} onClick={handleRemoveExtraMeeting}>
+                  {removingMeeting ? "Menghapus..." : `Hapus kolom ke-${lastRow.ke}`}
+                </button>
+              )}
+              <button className="btn btn-sm btn-p" disabled={addingMeeting || removingMeeting} onClick={handleAddMeeting}>
+                {addingMeeting ? "Menambahkan..." : "+ Tambah kolom pertemuan"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </section>

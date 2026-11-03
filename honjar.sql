@@ -132,7 +132,6 @@ CREATE TABLE public.pertemuan (
     dosen_pengajar text,
     kehadiran_dosen character varying(20),
     jumlah_hadir_mhs integer DEFAULT 0,
-    CONSTRAINT pertemuan_ke_check CHECK (((ke >= 1) AND (ke <= 16))),
     CONSTRAINT pertemuan_kehadiran_dosen_check CHECK (((kehadiran_dosen)::text = ANY ((ARRAY['hadir'::character varying, 'daring'::character varying, 'diganti'::character varying, 'batal'::character varying])::text[]))),
     CONSTRAINT pertemuan_metode_check CHECK (((metode)::text = ANY ((ARRAY['Teori'::character varying, 'Praktikum'::character varying])::text[]))),
     CONSTRAINT pertemuan_tipe_check CHECK (((tipe)::text = ANY ((ARRAY['kuliah'::character varying, 'uts'::character varying, 'uas'::character varying])::text[])))
