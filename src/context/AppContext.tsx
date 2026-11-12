@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from "react";
 import { ROLE, TITLE } from "@/lib/roles";
 import { MAX_EVIDENCE_UPLOAD_BYTES, MAX_EVIDENCE_UPLOAD_MESSAGE } from "@/lib/upload";
-import type { Dosen, ImportMahasiswaRow, KuliahRow, Mahasiswa, MataKuliah, NewCourseInput, NewDosenInput, NewMahasiswaInput, NewPJInput, PJUser, Role, ToastMessage, ToastType, ViewId, UserSession } from "@/lib/types";
+import type { Dosen, ImportMahasiswaRow, KuliahRow, Mahasiswa, MataKuliah, MoveDirection, NewCourseInput, NewDosenInput, NewMahasiswaInput, NewPJInput, PJUser, Role, ToastMessage, ToastType, ViewId, UserSession } from "@/lib/types";
 
 interface EditingTarget {
   courseId: number;
@@ -34,6 +34,7 @@ interface AppState {
   saveRow: (courseId: number, ke: number, patch: Partial<KuliahRow>) => void;
   addMeeting: (courseId: number) => Promise<{ success: boolean; ke?: number; error?: string }>;
   removeExtraMeeting: (courseId: number) => Promise<{ success: boolean; ke?: number; error?: string }>;
+  moveExamMeeting: (courseId: number, ke: number, direction: MoveDirection) => Promise<{ success: boolean; error?: string }>;
   deleteMeeting: (courseId: number, ke: number) => Promise<{ success: boolean; error?: string }>;
   uploadBukti: (file: File) => Promise<{ success: boolean; url?: string; originalName?: string; error?: string }>;
   addCourse: (input: NewCourseInput) => Promise<{ success: boolean; error?: string }>;
@@ -287,9 +288,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { success: false, error };
       }
 
-      setCourses((prev) => prev.map((course) => course.id !== courseId ? course : {
-        ...course,
-        rows: [...course.rows, { ke: data.ke, tipe: "kuliah", absents: [] }],
+      setCourses((prev) => prev.map((course) => {
+        if (course.id !== courseId) return course;
+        const shiftedRows = course.rows.map((row) =>
+          row.ke >= data.ke ? { ...row, ke: row.ke + 1 } : row
+        );
+        const nextRows = [...shiftedRows, { ke: data.ke, tipe: "kuliah" as const, absents: [] }]
+          .sort((a, b) => a.ke - b.ke);
+        return { ...course, rows: nextRows };
       }));
       showToast("success", `Kolom pertemuan ke-${data.ke} berhasil ditambahkan.`);
       return { success: true, ke: data.ke };
@@ -318,14 +324,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { success: false, error };
       }
 
-      setCourses((prev) => prev.map((course) => course.id !== courseId ? course : {
-        ...course,
-        rows: course.rows.filter((row) => row.ke !== data.ke),
+      setCourses((prev) => prev.map((course) => {
+        if (course.id !== courseId) return course;
+        const nextRows = course.rows
+          .filter((row) => row.ke !== data.ke)
+          .map((row) => (row.ke > data.ke ? { ...row, ke: row.ke - 1 } : row))
+          .sort((a, b) => a.ke - b.ke);
+        return { ...course, rows: nextRows };
       }));
       showToast("success", `Kolom pertemuan ke-${data.ke} berhasil dihapus.`);
       return { success: true, ke: data.ke };
     } catch (error) {
       console.error("Gagal menghapus kolom tambahan:", error);
+      showToast("error", "Gagal terhubung ke server.");
+      return { success: false, error: "Gagal terhubung ke server." };
+    }
+  };
+
+  const moveExamMeeting = async (
+    courseId: number,
+    ke: number,
+    direction: MoveDirection
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user || user.role !== "pj") {
+      return { success: false, error: "Hanya akun PJ yang dapat menggeser UTS/UAS." };
+    }
+
+    try {
+      const response = await fetch("/api/sessions/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId, ke, direction, pjId: user.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        const error = data.error || "Gagal menggeser posisi UTS/UAS.";
+        showToast("error", error);
+        return { success: false, error };
+      }
+
+      setCourses((prev) => prev.map((course) => {
+        if (course.id !== courseId) return course;
+        const nextRows = course.rows
+          .map((row) => {
+            if (row.ke === data.fromKe) return { ...row, ke: data.toKe };
+            if (row.ke === data.toKe) return { ...row, ke: data.fromKe };
+            return row;
+          })
+          .sort((a, b) => a.ke - b.ke);
+        return { ...course, rows: nextRows };
+      }));
+      const examLabel = String(data.tipe || "ujian").toUpperCase();
+      showToast("success", `Baris ${examLabel} berhasil digeser.`);
+      return { success: true };
+    } catch (error) {
+      console.error("Gagal menggeser baris UTS/UAS:", error);
       showToast("error", "Gagal terhubung ke server.");
       return { success: false, error: "Gagal terhubung ke server." };
     }
@@ -882,7 +935,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppState = {
     role, view, courses, curMK, title, sub,
     editing, editingRow, lecturers, dosenList, pjList, mahasiswaList, loading, authReady, user,
-    setRole, go, selectCourse, openSheet, closeSheet, saveRow, addMeeting, removeExtraMeeting, deleteMeeting, uploadBukti, addCourse, updateCourse, deleteCourse, addDosen, updateDosen, deleteDosen,
+    setRole, go, selectCourse, openSheet, closeSheet, saveRow, addMeeting, removeExtraMeeting, moveExamMeeting, deleteMeeting, uploadBukti, addCourse, updateCourse, deleteCourse, addDosen, updateDosen, deleteDosen,
     addPJ, updatePJ, deletePJ,
     addMahasiswa, updateMahasiswa, deleteMahasiswa, importMahasiswaPreview, importMahasiswaCommit,
     addToRoster, removeFromRoster,

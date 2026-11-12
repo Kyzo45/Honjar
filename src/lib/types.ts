@@ -108,6 +108,16 @@ export function parseDosenList(value?: string | string[] | null, knownNames?: st
     .filter(Boolean)));
 }
 
+/**
+ * Mengembalikan true jika mata kuliah termasuk kelompok Bakteriologi (Teori maupun Praktikum),
+ * yang diizinkan menambah kolom pertemuan dan menggeser posisi UTS/UAS.
+ */
+export function isBakteriologiCourse(nama?: string | null): boolean {
+  return Boolean(nama && /bakteriologi/i.test(nama));
+}
+
+export type MoveDirection = "up" | "down";
+
 export interface KuliahRow {
   ke: number;
   tipe: "kuliah";

@@ -8,11 +8,16 @@ function courseIsi(m: MataKuliah): number {
   return m.rows.filter((r) => r.tipe === "kuliah" && r.topik).length;
 }
 
+function courseTotal(m: MataKuliah): number {
+  return m.rows.filter((r) => r.tipe === "kuliah").length || 14;
+}
+
 function CourseCard({ m }: { m: MataKuliah }) {
   const { selectCourse } = useApp();
   const isi = courseIsi(m);
-  const status = isi >= 14 ? "t-done" : isi > 0 ? "t-wait" : "t-none";
-  const label = isi >= 14 ? "Lengkap" : isi > 0 ? "Berjalan" : "Kosong";
+  const totalPertemuan = courseTotal(m);
+  const status = isi >= totalPertemuan ? "t-done" : isi > 0 ? "t-wait" : "t-none";
+  const label = isi >= totalPertemuan ? "Lengkap" : isi > 0 ? "Berjalan" : "Kosong";
   const typeStatus = m.tipe === "Teori" ? "t-stamp" : "t-wait";
 
   return (
@@ -48,7 +53,7 @@ function CourseCard({ m }: { m: MataKuliah }) {
         )}
       </div>
       <div className="mk-foot">
-        <span><span className="num">{isi}</span>/14 pertemuan</span>
+        <span><span className="num">{isi}</span>/{totalPertemuan} pertemuan</span>
         <span className="kode">Semester {m.semester}</span>
       </div>
     </button>
@@ -58,6 +63,7 @@ function CourseCard({ m }: { m: MataKuliah }) {
 export default function MkView() {
   const { courses, semesterFilter, role } = useApp();
   const total = courses.reduce((sum, m) => sum + courseIsi(m), 0);
+  const totalPertemuanKeseluruhan = courses.reduce((sum, m) => sum + courseTotal(m), 0);
   const totalSks = courses.reduce((sum, m) => sum + (parseInt(m.sks) || 0), 0);
   const belumDiisi = courses.reduce(
     (sum, m) => sum + m.rows.filter((r) => r.tipe === "kuliah" && !r.topik).length,
@@ -125,7 +131,7 @@ export default function MkView() {
       )}
 
       <div className="cards">
-        <div className="stat"><dt>Pertemuan tercatat</dt><dd>{total}<small>/{courses.length * 14}</small></dd></div>
+        <div className="stat"><dt>Pertemuan tercatat</dt><dd>{total}<small>/{totalPertemuanKeseluruhan}</small></dd></div>
         <div className="stat"><dt>Pertemuan belum diisi</dt><dd>{belumDiisi}</dd></div>
         <div className="stat"><dt>Total SKS diampu</dt><dd>{totalSks}<small> SKS</small></dd></div>
       </div>

@@ -101,9 +101,10 @@ export default function MonitorView() {
           </thead>
           <tbody>
             {filteredCourses.map((m) => {
+              const totalPertemuan = m.rows.filter((r) => r.tipe === "kuliah").length || 14;
               const isi = m.rows.filter((r) => r.tipe === "kuliah" && r.topik).length;
-              const unfilled = 14 - isi;
-              const pct = Math.round((isi / 14) * 100);
+              const unfilled = Math.max(0, totalPertemuan - isi);
+              const pct = Math.round((isi / totalPertemuan) * 100);
               const menyimpang = hitungMenyimpang(m);
               const terakhir = inputTerakhir(m);
               const anom =
@@ -124,7 +125,7 @@ export default function MonitorView() {
                   <td>{m.kelas}</td>
                   <td>{m.pj}</td>
                   <td style={{ minWidth: 150 }}>
-                    <span className="num" style={{ fontSize: 12 }}>{isi}/14 · {pct}%</span>
+                    <span className="num" style={{ fontSize: 12 }}>{isi}/{totalPertemuan} · {pct}%</span>
                     <div className="bar"><i style={{ width: `${pct}%`, background: barColor }} /></div>
                   </td>
                   <td className="num" style={{ fontSize: 12.5 }}>{terakhir ? fmtTgl(terakhir).split(", ")[1] : "—"}</td>

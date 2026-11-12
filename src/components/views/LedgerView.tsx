@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { fmtTgl, jamAjar, menit } from "@/lib/format";
-import type { Kehadiran, Row } from "@/lib/types";
+import { isBakteriologiCourse, type Kehadiran, type MoveDirection, type Row } from "@/lib/types";
 
 const KEHADIRAN: Record<Kehadiran, [string, string]> = {
   hadir: ["t-done", "Hadir"],
@@ -13,10 +13,18 @@ const KEHADIRAN: Record<Kehadiran, [string, string]> = {
 };
 
 export default function LedgerView() {
-  const { curMK, openSheet, addMeeting, removeExtraMeeting, deleteMeeting, user } = useApp();
+  const { curMK, openSheet, addMeeting, removeExtraMeeting, moveExamMeeting, deleteMeeting, user } = useApp();
   const [deletingKe, setDeletingKe] = useState<number | null>(null);
   const [addingMeeting, setAddingMeeting] = useState(false);
   const [removingMeeting, setRemovingMeeting] = useState(false);
+  const [movingKe, setMovingKe] = useState<number | null>(null);
+
+  const isBakteriologi = isBakteriologiCourse(curMK.nama);
+  const canEditStructure = user?.role === "pj" && isBakteriologi;
+  const kuliahRows = curMK.rows.filter((r) => r.tipe === "kuliah");
+  const lastKuliahRow = kuliahRows[kuliahRows.length - 1];
+  const canRemoveLastAdded = canEditStructure && kuliahRows.length > 14 && Boolean(lastKuliahRow && !lastKuliahRow.topik);
+  const totalPertemuan = kuliahRows.length;
 
   const handleAddMeeting = async () => {
     setAddingMeeting(true);
@@ -26,10 +34,16 @@ export default function LedgerView() {
   };
 
   const handleRemoveExtraMeeting = async () => {
-    if (!lastRow || !confirm(`Hapus kolom pertemuan ke-${lastRow.ke} yang masih kosong?`)) return;
+    if (!lastKuliahRow || !confirm(`Hapus kolom pertemuan ke-${lastKuliahRow.ke} yang masih kosong?`)) return;
     setRemovingMeeting(true);
     await removeExtraMeeting(curMK.id);
     setRemovingMeeting(false);
+  };
+
+  const handleMoveExam = async (ke: number, direction: MoveDirection) => {
+    setMovingKe(ke);
+    await moveExamMeeting(curMK.id, ke, direction);
+    setMovingKe(null);
   };
 
   const handleDelete = async (ke: number) => {
@@ -40,9 +54,6 @@ export default function LedgerView() {
   };
 
   let isi = 0, jam = 0, hadirSum = 0;
-  const lastRow = curMK.rows[curMK.rows.length - 1];
-  const canRemoveLastAdded = lastRow?.tipe === "kuliah" && lastRow.ke > 16 && !lastRow.topik;
-  const totalPertemuan = curMK.rows.filter((r) => r.tipe === "kuliah").length;
   curMK.rows.forEach((r: Row) => {
     if (r.tipe === "kuliah" && r.topik) {
       isi++;
@@ -82,11 +93,46 @@ export default function LedgerView() {
               </tr>
             </thead>
             <tbody>
-              {curMK.rows.map((r: Row) => {
+              {curMK.rows.map((r: Row, idx: number) => {
                 if (r.tipe !== "kuliah") {
+                  if (!canEditStructure) {
+                    return (
+                      <tr key={r.ke} className="exam">
+                        <td colSpan={7}>{r.tipe.toUpperCase()}</td>
+                      </tr>
+                    );
+                  }
+                  const prevRow = curMK.rows[idx - 1];
+                  const nextRow = curMK.rows[idx + 1];
+                  const busy = movingKe !== null || addingMeeting || removingMeeting;
+                  const canMoveUp = idx > 0 && !(r.tipe === "uas" && prevRow?.tipe === "uts") && !busy;
+                  const canMoveDown = idx < curMK.rows.length - 1 && !(r.tipe === "uts" && nextRow?.tipe === "uas") && !busy;
                   return (
                     <tr key={r.ke} className="exam">
-                      <td colSpan={7}>{r.tipe.toUpperCase()}</td>
+                      <td colSpan={6}>{r.tipe.toUpperCase()}</td>
+                      <td className="c-act" style={{ letterSpacing: "normal" }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          disabled={!canMoveUp}
+                          title={`Geser ${r.tipe.toUpperCase()} ke atas`}
+                          aria-label={`Geser ${r.tipe.toUpperCase()} ke atas`}
+                          onClick={() => handleMoveExam(r.ke, "up")}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          style={{ marginLeft: "4px" }}
+                          disabled={!canMoveDown}
+                          title={`Geser ${r.tipe.toUpperCase()} ke bawah`}
+                          aria-label={`Geser ${r.tipe.toUpperCase()} ke bawah`}
+                          onClick={() => handleMoveExam(r.ke, "down")}
+                        >
+                          ↓
+                        </button>
+                      </td>
                     </tr>
                   );
                 }
@@ -146,14 +192,14 @@ export default function LedgerView() {
           <span>Terisi <b>{isi}</b> dari {totalPertemuan} pertemuan</span>
           <span>Total jam mengajar tercatat <b>{jam}</b></span>
           <span>Rata-rata kehadiran <b>{isi ? Math.round(hadirSum / isi) + " orang" : "—"}</b></span>
-          {user?.role === "pj" && (
+          {canEditStructure && (
             <>
-              {canRemoveLastAdded && (
-                <button className="btn btn-sm" style={{ color: "var(--rose)" }} disabled={removingMeeting || addingMeeting} onClick={handleRemoveExtraMeeting}>
-                  {removingMeeting ? "Menghapus..." : `Hapus kolom ke-${lastRow.ke}`}
+              {canRemoveLastAdded && lastKuliahRow && (
+                <button className="btn btn-sm" style={{ color: "var(--rose)" }} disabled={removingMeeting || addingMeeting || movingKe !== null} onClick={handleRemoveExtraMeeting}>
+                  {removingMeeting ? "Menghapus..." : `Hapus kolom ke-${lastKuliahRow.ke}`}
                 </button>
               )}
-              <button className="btn btn-sm btn-p" disabled={addingMeeting || removingMeeting} onClick={handleAddMeeting}>
+              <button className="btn btn-sm btn-p" disabled={addingMeeting || removingMeeting || movingKe !== null} onClick={handleAddMeeting}>
                 {addingMeeting ? "Menambahkan..." : "+ Tambah kolom pertemuan"}
               </button>
             </>
