@@ -13,7 +13,7 @@
   --mono:var(--font-mono),ui-monospace,"SF Mono",Menlo,monospace;
 }
 *{box-sizing:border-box}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;overflow-x:hidden;max-width:100vw}
 body{
   background:linear-gradient(180deg,#F6FBF6 0%,#E8F5EA 55%,#DCF0E1 100%);
   background-attachment:fixed;
@@ -26,7 +26,8 @@ button{cursor:pointer;border:0;background:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 /* ============ shell ============ */
-.app{display:grid;grid-template-columns:212px 1fr;min-height:100vh}
+.app{display:grid;grid-template-columns:212px 1fr;min-height:100vh;max-width:100vw;overflow-x:hidden}
+.main{min-width:0;display:flex;flex-direction:column;overflow-x:hidden;max-width:100%}
 .rail{
   background:linear-gradient(190deg,#1F4D35 0%,#163B29 55%,#0F2E20 100%);color:#E7F3EA;padding:18px 12px;
   display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;
@@ -127,7 +128,17 @@ button{cursor:pointer;border:0;background:none}
 .ledger-head div{display:flex;flex-direction:column;gap:1px}
 .ledger-head dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
 .ledger-head dd{margin:0;font-size:12.5px;font-weight:500}
-.scroll{overflow-x:auto}
+.scroll{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:var(--stamp-line) var(--rule-soft);
+  max-width:100%;
+}
+.scroll::-webkit-scrollbar{height:6px}
+.scroll::-webkit-scrollbar-track{background:var(--rule-soft);border-radius:3px}
+.scroll::-webkit-scrollbar-thumb{background:var(--stamp-line);border-radius:3px}
+.scroll::-webkit-scrollbar-thumb:hover{background:var(--stamp)}
 table.ledger{width:100%;border-collapse:collapse;min-width:1040px}
 table.ledger th{
   background:var(--paper);text-align:left;font-size:11px;font-weight:700;
@@ -1017,6 +1028,12 @@ textarea{resize:vertical;min-height:62px}
 .rail-close-btn {
   display: none;
 }
+.scroll-hint {
+  display: none;
+}
+.btn-text-short {
+  display: none;
+}
 
 /* ========================================================
    1. TABLET & MOBILE SHARED (max-width: 1023px)
@@ -1579,18 +1596,54 @@ textarea{resize:vertical;min-height:62px}
     -webkit-overflow-scrolling: touch !important;
     padding-bottom: 6px !important;
     border-radius: 0 0 10px 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  table.plain th,
-  table.plain td {
-    padding: 8px 10px !important;
-    font-size: 12px !important;
+  .scroll-hint {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: var(--ink-2) !important;
+    background: #EBF7EE !important;
+    border-bottom: 1px solid var(--rule) !important;
+    padding: 7px 12px !important;
   }
 
-  table.ledger th,
-  table.ledger td {
-    padding: 7px 8px !important;
+  /* KUNCI: Pastikan semua tabel di dalam .scroll memiliki min-width di HP agar bisa digeser */
+  .scroll > table.plain,
+  .scroll > table.ledger {
+    min-width: 720px !important;
+  }
+
+  .scroll > table.plain th,
+  .scroll > table.plain td {
+    padding: 9px 12px !important;
+    font-size: 12.5px !important;
+    white-space: nowrap !important;
+  }
+
+  .scroll > table.plain td b,
+  .scroll > table.ledger td .topik {
+    white-space: normal !important;
+  }
+
+  .scroll > table.ledger th,
+  .scroll > table.ledger td {
+    padding: 7px 10px !important;
     font-size: 12px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Back button text responsif di Topbar */
+  .btn-text-full {
+    display: none !important;
+  }
+  .btn-text-short {
+    display: inline !important;
   }
 
   /* Ledger View detail header di mobile */

@@ -101,6 +101,9 @@ export default function KelasView() {
             />
           </div>
         </div>
+        <div className="scroll-hint">
+          <span>👉 Geser tabel ke samping untuk melihat angkatan & tombol ⭐ Jadikan PJ</span>
+        </div>
         <div className="scroll">
           <table className="plain">
             <thead>
@@ -346,6 +349,9 @@ function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => voi
         title={course.nama}
         subtitle={<>{course.kode} · Kelas {course.kelas} · {course.roster.length} mahasiswa</>}
       >
+        <div className="scroll-hint">
+          <span>👉 Geser tabel ke samping untuk melihat angkatan & tombol ⭐ Jadikan PJ</span>
+        </div>
         <div className="scroll">
           <table className="plain">
             <thead>
@@ -497,6 +503,9 @@ function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => voi
           </div>
         )}
 
+        <div className="scroll-hint">
+          <span>👉 Geser tabel ke samping untuk melihat angkatan & tombol ⭐ Jadikan PJ</span>
+        </div>
         <div className="scroll">
           <table className="plain">
             <thead>

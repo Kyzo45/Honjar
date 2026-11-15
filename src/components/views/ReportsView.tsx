@@ -156,43 +156,49 @@ export default function ReportsView() {
   const renderReport = () => {
     if (report === "courses") {
       return (
-        <table className="plain">
-          <thead><tr><th>Mata kuliah</th><th>Kelas</th><th>Semester</th><th>Koordinator</th><th>Realisasi</th><th>Progres</th><th>Batal</th><th>Anomali jadwal</th></tr></thead>
-          <tbody>{courseRows.map(({ course, terisi, total, canceled, deviation }) => (
-            <tr key={course.id}>
-              <td><b>{course.nama}</b><br /><span className="num" style={{ color: "var(--ink-3)", fontSize: 11 }}>{course.kode}</span></td>
-              <td>{course.kelas}</td><td>{course.semester}</td><td>{course.koor}</td>
-              <td className="num">{terisi}/{total}</td>
-              <td><span className="num">{total ? Math.round(terisi / total * 100) : 0}%</span><div className="bar"><i style={{ width: `${total ? terisi / total * 100 : 0}%` }} /></div></td>
-              <td>{canceled}</td><td>{deviation}</td>
-            </tr>
-          ))}{courseRows.length === 0 && <EmptyRow columns={8} />}</tbody>
-        </table>
+        <div className="scroll">
+          <table className="plain">
+            <thead><tr><th>Mata kuliah</th><th>Kelas</th><th>Semester</th><th>Koordinator</th><th>Realisasi</th><th>Progres</th><th>Batal</th><th>Anomali jadwal</th></tr></thead>
+            <tbody>{courseRows.map(({ course, terisi, total, canceled, deviation }) => (
+              <tr key={course.id}>
+                <td><b>{course.nama}</b><br /><span className="num" style={{ color: "var(--ink-3)", fontSize: 11 }}>{course.kode}</span></td>
+                <td>{course.kelas}</td><td>{course.semester}</td><td>{course.koor}</td>
+                <td className="num">{terisi}/{total}</td>
+                <td><span className="num">{total ? Math.round(terisi / total * 100) : 0}%</span><div className="bar"><i style={{ width: `${total ? terisi / total * 100 : 0}%` }} /></div></td>
+                <td>{canceled}</td><td>{deviation}</td>
+              </tr>
+            ))}{courseRows.length === 0 && <EmptyRow columns={8} />}</tbody>
+          </table>
+        </div>
       );
     }
 
     if (report === "lecturers") {
       return (
-        <table className="plain">
-          <thead><tr><th>No</th><th>Dosen</th><th>Jumlah sesi</th><th>Total jam ajar</th><th>Jumlah mata kuliah diampu</th></tr></thead>
-          <tbody>{lecturerRows.map((lecturer, index) => (
-            <tr key={lecturer.nama}><td>{index + 1}</td><td><b>{lecturer.nama}</b></td><td className="num">{lecturer.sesi}</td><td className="num">{lecturer.jam}</td><td className="num">{lecturer.mataKuliah.size}</td></tr>
-          ))}{lecturerRows.length === 0 && <EmptyRow columns={5} />}</tbody>
-        </table>
+        <div className="scroll">
+          <table className="plain">
+            <thead><tr><th>No</th><th>Dosen</th><th>Jumlah sesi</th><th>Total jam ajar</th><th>Jumlah mata kuliah diampu</th></tr></thead>
+            <tbody>{lecturerRows.map((lecturer, index) => (
+              <tr key={lecturer.nama}><td>{index + 1}</td><td><b>{lecturer.nama}</b></td><td className="num">{lecturer.sesi}</td><td className="num">{lecturer.jam}</td><td className="num">{lecturer.mataKuliah.size}</td></tr>
+            ))}{lecturerRows.length === 0 && <EmptyRow columns={5} />}</tbody>
+          </table>
+        </div>
       );
     }
 
     return (
-      <table className="plain">
-        <thead><tr><th>Mahasiswa</th><th>NIM</th><th>Kelas</th><th>Sesi tercatat</th><th>Hadir</th><th>Sakit</th><th>Izin</th><th>Tanpa keterangan</th><th>Kehadiran</th></tr></thead>
-        <tbody>{attendanceRows.map((student, index) => (
-          <tr key={`${student.nim}-${student.kelas}-${index}`}>
-            <td><b>{student.nama}</b></td><td className="num">{student.nim}</td><td>{student.kelas}</td><td className="num">{student.kuliah}</td>
-            <td>{student.hadir}</td><td>{student.sakit}</td><td>{student.izin}</td><td>{student.tanpa}</td>
-            <td className="num">{student.kuliah ? Math.round(student.hadir / student.kuliah * 100) : 0}%</td>
-          </tr>
-        ))}{attendanceRows.length === 0 && <EmptyRow columns={9} />}</tbody>
-      </table>
+      <div className="scroll">
+        <table className="plain">
+          <thead><tr><th>Mahasiswa</th><th>NIM</th><th>Kelas</th><th>Sesi tercatat</th><th>Hadir</th><th>Sakit</th><th>Izin</th><th>Tanpa keterangan</th><th>Kehadiran</th></tr></thead>
+          <tbody>{attendanceRows.map((student, index) => (
+            <tr key={`${student.nim}-${student.kelas}-${index}`}>
+              <td><b>{student.nama}</b></td><td className="num">{student.nim}</td><td>{student.kelas}</td><td className="num">{student.kuliah}</td>
+              <td>{student.hadir}</td><td>{student.sakit}</td><td>{student.izin}</td><td>{student.tanpa}</td>
+              <td className="num">{student.kuliah ? Math.round(student.hadir / student.kuliah * 100) : 0}%</td>
+            </tr>
+          ))}{attendanceRows.length === 0 && <EmptyRow columns={9} />}</tbody>
+        </table>
+      </div>
     );
   };
 

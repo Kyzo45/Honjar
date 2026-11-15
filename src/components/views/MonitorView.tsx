@@ -100,71 +100,76 @@ export default function MonitorView() {
           </div>
           <p>Baris bertanda kuning berarti tanggal atau jam menyimpang dari jadwal induk.</p>
         </div>
-        <table className="plain">
-          <thead>
-            <tr>
-              <th>Mata kuliah</th><th>Kelas</th><th>Penanggung Jawab</th><th>Progres</th>
-              <th>Input terakhir</th><th>Anomali</th><th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCourses.map((m) => {
-              const totalPertemuan = m.rows.filter((r) => r.tipe === "kuliah").length || 14;
-              const isi = m.rows.filter((r) => r.tipe === "kuliah" && r.topik).length;
-              const unfilled = Math.max(0, totalPertemuan - isi);
-              const pct = Math.round((isi / totalPertemuan) * 100);
-              const menyimpang = hitungMenyimpang(m);
-              const terakhir = inputTerakhir(m);
-              const anom =
-                menyimpang > 0 ? <span className="tag t-wait">{menyimpang} pertemuan menyimpang</span> :
-                isi === 0 ? <span className="tag t-off">Belum ada input</span> :
-                <span style={{ color: "var(--ink-3)" }}>—</span>;
-              const barColor = pct >= 80 ? "var(--verd)" : pct >= 50 ? "var(--amber)" : "var(--rose)";
+        <div className="scroll-hint">
+          <span>👉 Geser tabel ke kanan untuk melihat status progres & kirim WA</span>
+        </div>
+        <div className="scroll">
+          <table className="plain">
+            <thead>
+              <tr>
+                <th>Mata kuliah</th><th>Kelas</th><th>Penanggung Jawab</th><th>Progres</th>
+                <th>Input terakhir</th><th>Anomali</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCourses.map((m) => {
+                const totalPertemuan = m.rows.filter((r) => r.tipe === "kuliah").length || 14;
+                const isi = m.rows.filter((r) => r.tipe === "kuliah" && r.topik).length;
+                const unfilled = Math.max(0, totalPertemuan - isi);
+                const pct = Math.round((isi / totalPertemuan) * 100);
+                const menyimpang = hitungMenyimpang(m);
+                const terakhir = inputTerakhir(m);
+                const anom =
+                  menyimpang > 0 ? <span className="tag t-wait">{menyimpang} pertemuan menyimpang</span> :
+                  isi === 0 ? <span className="tag t-off">Belum ada input</span> :
+                  <span style={{ color: "var(--ink-3)" }}>—</span>;
+                const barColor = pct >= 80 ? "var(--verd)" : pct >= 50 ? "var(--amber)" : "var(--rose)";
 
-              // Buat aksi WA terpisah agar setiap PJ yang ditugaskan dapat diingatkan.
-              const selectedPjIds = m.pjIds && m.pjIds.length > 0 ? m.pjIds : (m.pjId ? [m.pjId] : []);
-              const assignedPjs = selectedPjIds
-                .map((id) => pjList.find((p) => p.id === id))
-                .filter((pj) => pj !== undefined);
+                // Buat aksi WA terpisah agar setiap PJ yang ditugaskan dapat diingatkan.
+                const selectedPjIds = m.pjIds && m.pjIds.length > 0 ? m.pjIds : (m.pjId ? [m.pjId] : []);
+                const assignedPjs = selectedPjIds
+                  .map((id) => pjList.find((p) => p.id === id))
+                  .filter((pj) => pj !== undefined);
 
-              return (
-                <tr key={m.id}>
-                  <td><b>{m.nama}</b><br /><span className="num" style={{ fontSize: 11, color: "var(--ink-3)" }}>{m.kode}</span></td>
-                  <td>{m.kelas}</td>
-                  <td>{m.pj}</td>
-                  <td style={{ minWidth: 150 }}>
-                    <span className="num" style={{ fontSize: 12 }}>{isi}/{totalPertemuan} · {pct}%</span>
-                    <div className="bar"><i style={{ width: `${pct}%`, background: barColor }} /></div>
-                  </td>
-                  <td className="num" style={{ fontSize: 12.5 }}>{terakhir ? fmtTgl(terakhir).split(", ")[1] : "—"}</td>
-                  <td>{anom}</td>
-                  <td>
-                    {unfilled > 0 && assignedPjs.map((pj) => (
-                      <a
-                        key={pj.id}
-                        href={formatWAUrl(pj.noHp || "", buildWAMessageSingle(m, pj.nama))}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-sm"
-                        style={{ textDecoration: "none", whiteSpace: "nowrap", margin: "2px" }}
-                        title={`Kirim pengingat WA ke ${pj.nama}`}
-                      >
-                        💬 {pj.nama}
-                      </a>
-                    ))}
+                return (
+                  <tr key={m.id}>
+                    <td><b>{m.nama}</b><br /><span className="num" style={{ fontSize: 11, color: "var(--ink-3)" }}>{m.kode}</span></td>
+                    <td>{m.kelas}</td>
+                    <td>{m.pj}</td>
+                    <td style={{ minWidth: 150 }}>
+                      <span className="num" style={{ fontSize: 12 }}>{isi}/{totalPertemuan} · {pct}%</span>
+                      <div className="bar"><i style={{ width: `${pct}%`, background: barColor }} /></div>
+                    </td>
+                    <td className="num" style={{ fontSize: 12.5 }}>{terakhir ? fmtTgl(terakhir).split(", ")[1] : "—"}</td>
+                    <td>{anom}</td>
+                    <td>
+                      {unfilled > 0 && assignedPjs.map((pj) => (
+                        <a
+                          key={pj.id}
+                          href={formatWAUrl(pj.noHp || "", buildWAMessageSingle(m, pj.nama))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-sm"
+                          style={{ textDecoration: "none", whiteSpace: "nowrap", margin: "2px" }}
+                          title={`Kirim pengingat WA ke ${pj.nama}`}
+                        >
+                          💬 {pj.nama}
+                        </a>
+                      ))}
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredCourses.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px" }}>
+                    Tidak ada PJ yang cocok dengan &quot;{pjQuery}&quot;.
                   </td>
                 </tr>
-              );
-            })}
-            {filteredCourses.length === 0 && (
-              <tr>
-                <td colSpan={7} style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px" }}>
-                  Tidak ada PJ yang cocok dengan &quot;{pjQuery}&quot;.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showReminder && (

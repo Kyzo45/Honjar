@@ -76,6 +76,9 @@ export default function LedgerView() {
             <div><dt>Dosen</dt><dd>{curMK.dosen.join(" · ")}</dd></div>
           </dl>
         </div>
+        <div className="scroll-hint">
+          <span>👉 Geser tabel ke samping untuk rincian topik materi & tombol isi</span>
+        </div>
         <div className="scroll">
           <table className="ledger">
             <thead>

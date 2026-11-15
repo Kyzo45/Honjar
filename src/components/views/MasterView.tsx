@@ -241,6 +241,9 @@ export default function MasterView() {
             <button className="btn btn-sm btn-p" onClick={() => setShowForm(true)}>Tambah mata kuliah</button>
           </div>
         </div>
+        <div className="scroll-hint">
+          <span>👉 Geser tabel ke samping untuk melihat jadwal, koordinator, PJ, & tombol aksi</span>
+        </div>
         <div className="scroll">
           <table className="plain">
             <thead>

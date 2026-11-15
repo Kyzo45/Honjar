@@ -31,8 +31,9 @@ export default function Topbar() {
           <span className="term">{ACADEMIC_CONFIG.tahunAjaran}</span>
         )}
         {view === "ledger" && (
-          <button className="btn btn-sm" onClick={() => go("mk")}>
-            ← Semua mata kuliah
+          <button className="btn btn-sm topbar-back-btn" onClick={() => go("mk")}>
+            <span className="btn-text-full">← Semua mata kuliah</span>
+            <span className="btn-text-short">← Kembali</span>
           </button>
         )}
       </div>

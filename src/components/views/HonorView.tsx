@@ -245,6 +245,9 @@ export default function HonorView() {
           </div>
           <p>Disusun dari berita acara yang sudah diisi. Tidak ada angka yang diketik ulang di halaman ini.</p>
         </div>
+        <div className="scroll-hint">
+          <span>👉 Geser tabel ke samping untuk rincian sesi, jam mengajar, dan mata kuliah</span>
+        </div>
         <div className="scroll">
           <table className="plain">
             <thead>
