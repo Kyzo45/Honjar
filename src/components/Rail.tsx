@@ -22,8 +22,18 @@ export default function Rail() {
   return (
     <nav className="rail" data-open={menuOpen}>
       <div className="brand">
-        <b>Honjar</b>
-        <span>TLM&nbsp;D4</span>
+        <div className="brand-logo">
+          <b>Honjar</b>
+          <span>TLM&nbsp;D4</span>
+        </div>
+        <button
+          type="button"
+          className="rail-close-btn"
+          onClick={() => setMenuOpen(false)}
+          aria-label="Tutup menu navigasi"
+        >
+          ✕
+        </button>
       </div>
 
       {role === "pj" && (

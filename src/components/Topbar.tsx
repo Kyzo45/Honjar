@@ -9,8 +9,8 @@ export default function Topbar() {
 
   return (
     <header className="topbar">
-      <button className="menu-btn" onClick={() => setMenuOpen(true)}>☰</button>
-      <div>
+      <button className="menu-btn" onClick={() => setMenuOpen(true)} aria-label="Buka menu navigasi">☰</button>
+      <div className="topbar-info">
         <h1>{title}</h1>
         <p className="sub">{sub}</p>
       </div>

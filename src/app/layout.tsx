@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Public_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -23,6 +23,13 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Honjar - Berita Acara Kuliah",
   description: "Sistem berita acara kuliah TLM D4",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#163B29",
 };
 
 export default function RootLayout({

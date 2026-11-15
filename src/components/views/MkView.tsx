@@ -141,7 +141,7 @@ export default function MkView() {
         <div className="stat"><dt>Pertemuan belum diisi</dt><dd>{belumDiisi}</dd></div>
         <div className="stat"><dt>Total SKS diampu</dt><dd>{totalSks}<small> SKS</small></dd></div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+      <div className="mk-section-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "14px" }}>
         <p className="eyebrow" style={{ margin: 0 }}>Kelas yang Anda pegang</p>
         <input
           type="text"
