@@ -50,7 +50,14 @@ export default function KelasView() {
   const [query, setQuery] = useState("");
 
   const sorted = useMemo(
-    () => [...courses].sort((a, b) => a.nama.localeCompare(b.nama)),
+    () =>
+      [...courses].sort(
+        (a, b) =>
+          a.semester - b.semester ||
+          a.nama.localeCompare(b.nama) ||
+          a.kelas.localeCompare(b.kelas) ||
+          (a.tipe === "Teori" ? -1 : 1)
+      ),
     [courses]
   );
 
@@ -133,23 +140,30 @@ export default function KelasView() {
 }
 
 function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => void }) {
-  const { mahasiswaList, addToRoster, removeFromRoster } = useApp();
+  const { courses, mahasiswaList, pjList, updateCourse, addPJ, addToRoster, addBatchToRoster, removeFromRoster, importMahasiswaPreview, showToast } = useApp();
   const [showAddNew, setShowAddNew] = useState(false);
   const [newNim, setNewNim] = useState("");
   const [newNama, setNewNama] = useState("");
   const [newAngkatan, setNewAngkatan] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  // Pencarian mahasiswa khusus di dalam kelas ini
+  const [rosterSearch, setRosterSearch] = useState("");
   const [busyNim, setBusyNim] = useState<string | null>(null);
-  const pickerRef = useRef<HTMLDivElement>(null);
   const nimRef = useRef<HTMLInputElement>(null);
+
+  // Salin dari mata kuliah lain
+  const [copyPickerOpen, setCopyPickerOpen] = useState(false);
+  const [copySearch, setCopySearch] = useState("");
+  const copyPickerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setPickerOpen(false);
+      if (copyPickerRef.current && !copyPickerRef.current.contains(e.target as Node)) {
+        setCopyPickerOpen(false);
       }
     };
     document.addEventListener("mousedown", onClick);
@@ -157,22 +171,81 @@ function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => voi
   }, []);
 
   const rosterNimSet = useMemo(() => new Set(course.roster.map((m) => m.nim)), [course.roster]);
-  const notInRoster = useMemo(
-    () =>
-      mahasiswaList.filter(
-        (m) => !rosterNimSet.has(m.nim) && (m.nama.toLowerCase().includes(search.toLowerCase()) || m.nim.includes(search))
-      ),
-    [mahasiswaList, rosterNimSet, search]
-  );
+
+  // Mahasiswa di kelas ini yang cocok dengan pencarian
+  const filteredRoster = useMemo(() => {
+    const q = rosterSearch.trim().toLowerCase();
+    if (!q) return course.roster;
+    return course.roster.filter(
+      (m) => m.nama.toLowerCase().includes(q) || m.nim.includes(q)
+    );
+  }, [course.roster, rosterSearch]);
+
+  const copyOptions = useMemo(() => {
+    const q = copySearch.trim().toLowerCase();
+    return courses.filter(
+      (c) =>
+        c.id !== course.id &&
+        c.roster.length > 0 &&
+        (!q ||
+          c.nama.toLowerCase().includes(q) ||
+          c.kode.toLowerCase().includes(q) ||
+          c.kelas.toLowerCase().includes(q))
+    );
+  }, [courses, course.id, copySearch]);
+
+  const handleCopyFromCourse = async (sourceCourse: MataKuliah) => {
+    if (sourceCourse.roster.length === 0) return;
+    const missing = sourceCourse.roster.filter((m) => !rosterNimSet.has(m.nim));
+    if (missing.length === 0) {
+      showToast("error", `Semua mahasiswa dari ${sourceCourse.nama} (${sourceCourse.kelas}) sudah terdaftar di kelas ini.`);
+      setCopyPickerOpen(false);
+      return;
+    }
+    setSaving(true);
+    await addBatchToRoster(course.id, missing);
+    setSaving(false);
+    setCopyPickerOpen(false);
+    setCopySearch("");
+  };
+
+  const onUploadExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await importMahasiswaPreview(file);
+      if (res.success && res.rows) {
+        const valid = res.rows
+          .filter((r) => r.status !== "error" && r.nim)
+          .map((r) => ({ nim: r.nim, nama: r.nama, angkatan: r.angkatan }));
+        if (valid.length === 0) {
+          showToast("error", "Tidak ada baris data mahasiswa yang valid pada berkas Excel.");
+          return;
+        }
+        await addBatchToRoster(course.id, valid);
+      } else {
+        showToast("error", res.error || "Gagal membaca berkas Excel");
+      }
+    } catch (err: any) {
+      showToast("error", err?.message || "Gagal mengunggah berkas Excel");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const onlyDigits = (s: string) => s.replace(/\D/g, "");
 
-  const handleAddExisting = async (nim: string) => {
-    setBusyNim(nim);
-    await addToRoster(course.id, { nim });
-    setBusyNim(null);
-    setPickerOpen(false);
-    setSearch("");
+  const handleNimInput = (val: string) => {
+    const digits = onlyDigits(val).slice(0, 15);
+    setNewNim(digits);
+    // Jika NIM ini sudah ada di database kampus, otomatis isi Nama dan Angkatan
+    const found = mahasiswaList.find((m) => m.nim === digits);
+    if (found) {
+      setNewNama(found.nama);
+      setNewAngkatan(found.angkatan || "");
+    }
   };
 
   const handleAddNew = async () => {
@@ -190,6 +263,70 @@ function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => voi
     }
     setNewNim(""); setNewNama(""); setNewAngkatan("");
     setShowAddNew(false);
+  };
+
+  const handleSetPj = async (m: { nim: string; nama: string; angkatan?: string }) => {
+    setBusyNim(m.nim);
+    try {
+      // 1. Cek apakah mahasiswa ini sudah punya akun login PJ
+      let pjUser = pjList.find((p) => p.nim === m.nim || p.username === m.nim);
+      let targetPjId = pjUser?.id;
+
+      if (!targetPjId) {
+        // Otomatis buat akun PJ dengan default password adalah NIM mahasiswa
+        const createRes = await addPJ({
+          nim: m.nim,
+          nama: m.nama,
+          angkatan: m.angkatan || "",
+          noHp: "",
+          password: m.nim,
+        });
+        if (!createRes.success) {
+          showToast("error", createRes.error || "Gagal membuat akun login PJ untuk mahasiswa ini.");
+          setBusyNim(null);
+          return;
+        }
+        const freshPj = await fetch("/api/pj").then((r) => r.json()).catch(() => []);
+        const newlyCreated = Array.isArray(freshPj)
+          ? freshPj.find((p: any) => p.nim === m.nim || p.username === m.nim)
+          : null;
+        targetPjId = newlyCreated?.id;
+      }
+
+      if (!targetPjId) {
+        showToast("error", "Gagal menetapkan PJ: ID pengguna tidak ditemukan.");
+        setBusyNim(null);
+        return;
+      }
+
+      const res = await updateCourse(course.id, {
+        kode: course.kode,
+        nama: course.nama,
+        kelas: course.kelas,
+        sks: course.sks,
+        koor: course.koor,
+        dosen: course.dosen,
+        tipe: course.tipe,
+        semester: course.semester,
+        hari: course.hari,
+        jamMulai: course.jamMulai,
+        jamSelesai: course.jamSelesai,
+        ruangan: course.ruangan,
+        tahunAjaran: course.tahunAjaran,
+        pjId: targetPjId,
+        pjIds: [targetPjId],
+      });
+
+      if (res.success) {
+        showToast("success", `${m.nama} berhasil ditetapkan sebagai PJ untuk ${course.nama} (${course.kelas}).`);
+      } else {
+        showToast("error", res.error || "Gagal memperbarui PJ mata kuliah.");
+      }
+    } catch (err: any) {
+      showToast("error", err?.message || "Terjadi kesalahan saat menetapkan PJ.");
+    } finally {
+      setBusyNim(null);
+    }
   };
 
   const removeFromCourse = async (nim: string, nama: string) => {
@@ -237,29 +374,72 @@ function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => voi
 
       <SectionPanel
         title="Mahasiswa"
-        subtitle="Tambah atau keluarkan mahasiswa dari mata kuliah ini."
+        subtitle={
+          <>
+            Daftar mahasiswa peserta mata kuliah ini.{" "}
+            {rosterSearch ? (
+              <b>(Menampilkan {filteredRoster.length} dari {course.roster.length} mahasiswa)</b>
+            ) : (
+              <span>(Total {course.roster.length} mahasiswa)</span>
+            )}
+          </>
+        }
         right={
-          <div style={{ display: "flex", gap: "8px" }}>
-            <div className="combo" ref={pickerRef}>
-              <button type="button" className="btn btn-sm" onClick={() => setPickerOpen((o) => !o)}>
-                🔍 Pilih mahasiswa lain
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+            {/* Kolom cari mahasiswa khusus di dalam kelas ini */}
+            <input
+              type="text"
+              value={rosterSearch}
+              onChange={(e) => setRosterSearch(e.target.value)}
+              placeholder="🔍 Cari nama atau NIM di kelas ini..."
+              style={{
+                padding: "6px 10px",
+                fontSize: "12px",
+                borderRadius: "var(--r)",
+                border: "1px solid var(--rule)",
+                background: "var(--paper)",
+                minWidth: "220px",
+              }}
+            />
+
+            {/* Salin dari mata kuliah lain */}
+            <div className="combo" ref={copyPickerRef}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => setCopyPickerOpen((o) => !o)}
+                title="Salin seluruh peserta mahasiswa dari kelas atau mata kuliah lain dalam satu klik"
+              >
+                📋 Salin dari Kelas Lain
               </button>
-              {pickerOpen && (
-                <div className="combo-panel" style={{ right: 0, left: "auto" }}>
+              {copyPickerOpen && (
+                <div className="combo-panel" style={{ right: 0, left: "auto", minWidth: "320px" }}>
                   <input
                     className="combo-search"
                     autoFocus
-                    placeholder="Cari nama atau NIM"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari nama atau kelas mata kuliah..."
+                    value={copySearch}
+                    onChange={(e) => setCopySearch(e.target.value)}
                   />
                   <div className="combo-list">
-                    {notInRoster.length === 0 ? (
-                      <div className="combo-empty">Tidak ada mahasiswa lain yang cocok</div>
+                    {copyOptions.length === 0 ? (
+                      <div className="combo-empty">Tidak ada mata kuliah lain dengan peserta mahasiswa</div>
                     ) : (
-                      notInRoster.map((m) => (
-                        <button type="button" key={m.nim} className="combo-item" onClick={() => handleAddExisting(m.nim)}>
-                          <span className="nim">{m.nim}</span>{m.nama}
+                      copyOptions.map((c) => (
+                        <button
+                          type="button"
+                          key={c.id}
+                          className="combo-item"
+                          onClick={() => handleCopyFromCourse(c)}
+                          style={{ justifyContent: "space-between" }}
+                        >
+                          <span>
+                            <span className="nim">{c.kelas}</span>
+                            <b>{c.nama}</b> ({c.tipe})
+                          </span>
+                          <span style={{ fontSize: "11px", color: "var(--ink-3)", whiteSpace: "nowrap" }}>
+                            {c.roster.length} mhs
+                          </span>
                         </button>
                       ))
                     )}
@@ -267,16 +447,40 @@ function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => voi
                 </div>
               )}
             </div>
-            <button className="btn btn-sm btn-p" onClick={() => { setShowAddNew((o) => !o); setTimeout(() => nimRef.current?.focus(), 0); }}>＋ Mahasiswa baru</button>
+
+            {/* Upload Excel Roster */}
+            <button
+              type="button"
+              className="btn btn-sm"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              title="Unggah berkas Excel daftar mahasiswa untuk dimasukkan langsung ke kelas ini"
+            >
+              {uploading ? "Membaca..." : "⇪ Upload Excel"}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: "none" }}
+              onChange={onUploadExcel}
+            />
+
+            <button
+              className="btn btn-sm btn-p"
+              onClick={() => { setShowAddNew((o) => !o); setTimeout(() => nimRef.current?.focus(), 0); }}
+            >
+              ＋ Tambah Mahasiswa
+            </button>
           </div>
         }
       >
         {showAddNew && (
           <div style={{ padding: "0 20px 16px" }}>
             <div className="row c3">
-              <label className="f"><span>NIM</span>
+              <label className="f"><span>NIM <em>(auto-fill jika terdaftar)</em></span>
                 <input ref={nimRef} type="text" inputMode="numeric" value={newNim} placeholder="2250391001"
-                  onChange={(e) => setNewNim(onlyDigits(e.target.value).slice(0, 15))} />
+                  onChange={(e) => handleNimInput(e.target.value)} />
               </label>
               <label className="f"><span>Nama</span>
                 <input type="text" value={newNama} placeholder="Nama mahasiswa"
@@ -304,27 +508,73 @@ function KelasDetail({ course, onBack }: { course: MataKuliah; onBack: () => voi
               </tr>
             </thead>
             <tbody>
-              {course.roster.map((m) => (
-                <tr key={m.nim}>
-                  <td className="num">{m.nim}</td>
-                  <td><b>{m.nama}</b></td>
-                  <td>{m.angkatan || "—"}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      className="btn btn-sm"
-                      style={{ color: "var(--rose)" }}
-                      disabled={busyNim === m.nim}
-                      onClick={() => removeFromCourse(m.nim, m.nama)}
-                    >
-                      {busyNim === m.nim ? "Memproses..." : "Keluarkan"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {course.roster.length === 0 && (
+              {filteredRoster.map((m) => {
+                const pjUser = pjList.find((p) => p.nim === m.nim || p.username === m.nim);
+                const isCurrentPj = Boolean(
+                  (pjUser && course.pjIds?.includes(pjUser.id)) ||
+                  (pjUser && course.pjId === pjUser.id) ||
+                  (course.pj && course.pj.toLowerCase().includes(m.nama.toLowerCase()))
+                );
+
+                return (
+                  <tr key={m.nim}>
+                    <td className="num">{m.nim}</td>
+                    <td>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <b>{m.nama}</b>
+                        {isCurrentPj && (
+                          <span
+                            className="tag t-stamp"
+                            style={{
+                              fontSize: "10.5px",
+                              background: "#FEF3C7",
+                              color: "#92400E",
+                              border: "1px solid #FCD34D",
+                              padding: "2px 6px",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            ⭐ PJ Kelas
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td>{m.angkatan || "—"}</td>
+                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      {!isCurrentPj ? (
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          disabled={busyNim === m.nim}
+                          onClick={() => handleSetPj(m)}
+                          title={`Jadikan ${m.nama} sebagai Penanggung Jawab (PJ) mata kuliah ini`}
+                          style={{ marginRight: "6px" }}
+                        >
+                          ⭐ Jadikan PJ
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: "11px", color: "var(--verd)", marginRight: "8px", fontWeight: "bold" }}>
+                          ✓ PJ Aktif
+                        </span>
+                      )}
+                      <button
+                        className="btn btn-sm"
+                        style={{ color: "var(--rose)" }}
+                        disabled={busyNim === m.nim}
+                        onClick={() => removeFromCourse(m.nim, m.nama)}
+                      >
+                        {busyNim === m.nim ? "Memproses..." : "Keluarkan"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredRoster.length === 0 && (
                 <tr>
                   <td colSpan={4} style={{ textAlign: "center", color: "var(--ink-3)", padding: "20px" }}>
-                    Belum ada mahasiswa di mata kuliah ini.
+                    {course.roster.length === 0
+                      ? "Belum ada mahasiswa di mata kuliah ini. Gunakan 'Salin dari Kelas Lain' atau 'Upload Excel' di atas."
+                      : `Tidak ada mahasiswa di kelas ini yang cocok dengan pencarian "${rosterSearch}".`}
                   </td>
                 </tr>
               )}

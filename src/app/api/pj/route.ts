@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
-
-export let fallbackPJ: any[] = [
-  { id: 3, nim: "4211001", nama: "Rifqi Aulia", angkatan: "2021", noHp: "", username: "4211001", password: "123456" },
-  { id: 4, nim: "2350081023", nama: "Rifqi Aulia", angkatan: "2023", noHp: "", username: "2350081023", password: "123456" },
-];
+import { fallbackPJ } from "@/lib/data";
 
 function validatePJInput(nim: string, nama: string, angkatan: string, noHp: string): string | null {
   if (!/^\d+$/.test(nim)) return "NIM harus berupa angka";
@@ -174,7 +170,8 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.warn("PostgreSQL offline/error. Sukses menghapus PJ di cache lokal:", error.message);
-    fallbackPJ = fallbackPJ.filter((p) => p.id !== Number(id));
+    const delIdx = fallbackPJ.findIndex((p) => p.id === Number(id));
+    if (delIdx !== -1) fallbackPJ.splice(delIdx, 1);
     return NextResponse.json({ success: true });
   }
 }

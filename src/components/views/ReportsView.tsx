@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { jamAjar, menit } from "@/lib/format";
 import { parseDosenList } from "@/lib/types";
+import { ACADEMIC_CONFIG } from "@/config/academic";
+import KopSurat from "@/components/KopSurat";
 
 type ReportKind = "courses" | "lecturers" | "attendance";
 
@@ -27,24 +29,26 @@ interface StudentSummary {
 
 const REPORTS: { id: ReportKind; label: string }[] = [
   { id: "courses", label: "Realisasi kuliah" },
-  { id: "lecturers", label: "Beban dosen" },
+  { id: "lecturers", label: "Beban Dosen" },
   { id: "attendance", label: "Presensi mahasiswa" },
 ];
+
+// Pengaturan tahun ajaran & semester bersumber dari konfigurasi terpusat ACADEMIC_CONFIG
+const CURRENT_ACADEMIC_YEAR = ACADEMIC_CONFIG.tahunAjaran;
+const CURRENT_SEMESTER_TYPE = ACADEMIC_CONFIG.semesterAktif;
 
 export default function ReportsView() {
   const { courses, dosenList, showToast } = useApp();
   const [report, setReport] = useState<ReportKind>("courses");
-  const [semester, setSemester] = useState("all");
+  const [period, setPeriod] = useState<"ganjil" | "genap" | "all">(CURRENT_SEMESTER_TYPE);
   const [exporting, setExporting] = useState(false);
 
-  const availableSemesters = useMemo(
-    () => Array.from(new Set(courses.map((course) => course.semester))).sort((a, b) => a - b),
-    [courses]
-  );
-  const filteredCourses = useMemo(
-    () => semester === "all" ? courses : courses.filter((course) => course.semester === Number(semester)),
-    [courses, semester]
-  );
+  const filteredCourses = useMemo(() => {
+    if (period === "all") return courses;
+    if (period === "ganjil") return courses.filter((course) => course.semester % 2 !== 0);
+    if (period === "genap") return courses.filter((course) => course.semester % 2 === 0);
+    return courses;
+  }, [courses, period]);
 
   const courseRows = useMemo(() => filteredCourses.map((course) => {
     const sessions = course.rows.filter((row) => row.tipe === "kuliah");
@@ -98,7 +102,28 @@ export default function ReportsView() {
   }, [filteredCourses]);
 
   const reportLabel = REPORTS.find((item) => item.id === report)?.label || "Laporan akademik";
-  const semesterLabel = semester === "all" ? "Semua semester" : `Semester ${semester}`;
+
+  const periodLabel = useMemo(() => {
+    if (period === "ganjil") return "Semester Ganjil";
+    if (period === "genap") return "Semester Genap";
+    return "Ganjil & Genap (Semua Semester)";
+  }, [period]);
+
+  const periodSubtitle = useMemo(() => {
+    if (period === "ganjil") return `${CURRENT_ACADEMIC_YEAR} Ganjil`;
+    if (period === "genap") return `${CURRENT_ACADEMIC_YEAR} Genap`;
+    return `${CURRENT_ACADEMIC_YEAR} (Ganjil & Genap)`;
+  }, [period]);
+
+  const pdfFileName = useMemo(() => {
+    const safeReport = reportLabel.replace(/\s+/g, "_");
+    const safeYear = CURRENT_ACADEMIC_YEAR.replace("/", "-");
+    const safePeriod =
+      period === "ganjil" ? `${safeYear}_Ganjil` :
+      period === "genap" ? `${safeYear}_Genap` :
+      `${safeYear}_Semua`;
+    return `${safeReport}_${safePeriod}.pdf`;
+  }, [reportLabel, period]);
 
   const handleDownloadPdf = async () => {
     if (exporting) return;
@@ -114,7 +139,7 @@ export default function ReportsView() {
       clone.querySelectorAll(".report-controls").forEach((control) => control.remove());
       await html2pdf().set({
         margin: 10,
-        filename: `${reportLabel.replace(/\\s+/g, "_")}_Semester_${semester === "all" ? "Semua" : semester}.pdf`,
+        filename: pdfFileName,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
@@ -194,34 +219,44 @@ export default function ReportsView() {
             ))}
           </div>
           <div className="right">
-            <select className="term" value={semester} onChange={(event) => setSemester(event.target.value)} aria-label="Filter semester">
-              <option value="all">Semua semester</option>
-              {availableSemesters.map((value) => <option key={value} value={value}>Semester {value}</option>)}
+            <select
+              className="term"
+              value={period}
+              onChange={(event) => setPeriod(event.target.value as "ganjil" | "genap" | "all")}
+              aria-label="Filter periode semester"
+              style={{
+                padding: "6px 12px",
+                borderRadius: "var(--r)",
+                border: "1px solid var(--rule)",
+                background: "var(--paper)",
+                fontSize: "12.5px",
+                fontWeight: "600",
+                color: "var(--ink)",
+                cursor: "pointer",
+              }}
+            >
+              <option value="ganjil">
+                {CURRENT_ACADEMIC_YEAR} Ganjil {CURRENT_SEMESTER_TYPE === "ganjil" ? "(Aktif)" : ""}
+              </option>
+              <option value="genap">
+                {CURRENT_ACADEMIC_YEAR} Genap {CURRENT_SEMESTER_TYPE === "genap" ? "(Aktif)" : ""}
+              </option>
+              <option value="all">Semua ({CURRENT_ACADEMIC_YEAR})</option>
             </select>
             <button className="btn btn-sm btn-p" onClick={handleDownloadPdf} disabled={exporting}>
               {exporting ? "Menyiapkan PDF..." : "Unduh PDF"}
             </button>
           </div>
-          <p>{reportLabel} · {semesterLabel} · Tahun ajaran 2026/2027</p>
+          <p>{reportLabel} · {periodSubtitle} · Tahun ajaran {CURRENT_ACADEMIC_YEAR}</p>
         </div>
         <div className="report-print-header">
-          <div className="page-kop">
-            <img src="/logo-yayasan.jpeg" alt="Logo Yayasan" className="page-kop-logo" />
-            <div className="page-kop-text">
-              <b>YAYASAN KARTIKA EKA PAKSI</b>
-              <b style={{ color: "var(--ink)", fontSize: "11px", fontWeight: "700" }}>UNIVERSITAS JENDERAL ACHMAD YANI (UNJANI)</b>
-              <b>FAKULTAS ILMU DAN TEKNOLOGI KESEHATAN (FITKes)</b>
-              <b>PROGRAM STUDI TEKNOLOGI LABORATORIUM MEDIS (D4)</b>
-              <span>Kampus: Jl. Terusan Jenderal Sudirman-Cimahi Tlp.(022 ) 6631622–6631623</span>
-            </div>
-            <img src="/logo-unjani.png" alt="Logo Unjani" className="page-kop-logo" />
-          </div>
+          <KopSurat />
           <h4>Laporan Akademik</h4>
           <div className="page-meta" style={{ marginBottom: 0 }}>
             <div>
               <b>Jenis laporan</b> : {reportLabel}<br />
-              <b>Semester</b> : {semesterLabel}<br />
-              <b>Tahun ajaran</b> : 2026/2027
+              <b>Semester</b> : {periodLabel}<br />
+              <b>Tahun ajaran</b> : {CURRENT_ACADEMIC_YEAR}
             </div>
           </div>
         </div>

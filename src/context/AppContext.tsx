@@ -52,6 +52,7 @@ interface AppState {
   importMahasiswaPreview: (file: File) => Promise<{ success: boolean; rows?: ImportMahasiswaRow[]; error?: string }>;
   importMahasiswaCommit: (rows: ImportMahasiswaRow[]) => Promise<{ success: boolean; inserted?: number; updated?: number; error?: string }>;
   addToRoster: (courseId: number, input: { nim: string; nama?: string; angkatan?: string }) => Promise<{ success: boolean; error?: string }>;
+  addBatchToRoster: (courseId: number, students: { nim: string; nama?: string; angkatan?: string }[]) => Promise<{ success: boolean; added?: number; error?: string }>;
   removeFromRoster: (courseId: number, nim: string) => Promise<{ success: boolean; error?: string }>;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
@@ -852,6 +853,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // 4lb. Tambahkan banyak mahasiswa sekaligus (salin dari mata kuliah lain atau upload Excel)
+  const addBatchToRoster = async (courseId: number, students: { nim: string; nama?: string; angkatan?: string }[]): Promise<{ success: boolean; added?: number; error?: string }> => {
+    try {
+      const res = await fetch("/api/courses/roster", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId, students })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const [freshC, freshM] = await Promise.all([
+          loadCourses(),
+          fetch("/api/mahasiswa").then((r) => r.json())
+        ]);
+        if (freshC) setCourses(freshC);
+        if (Array.isArray(freshM)) setMahasiswaList(freshM);
+        showToast("success", `${data.added || students.length} mahasiswa berhasil ditambahkan.`);
+        return { success: true, added: data.added };
+      }
+      showToast("error", data.error || "Gagal menambahkan daftar mahasiswa");
+      return { success: false, error: data.error };
+    } catch (err) {
+      console.error("Gagal menambahkan daftar mahasiswa:", err);
+      showToast("error", "Gagal terhubung ke server");
+      return { success: false, error: "Gagal terhubung ke server" };
+    }
+  };
+
   // 4m. Keluarkan mahasiswa dari roster satu mata kuliah
   const removeFromRoster = async (courseId: number, nim: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -938,7 +967,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRole, go, selectCourse, openSheet, closeSheet, saveRow, addMeeting, removeExtraMeeting, moveExamMeeting, deleteMeeting, uploadBukti, addCourse, updateCourse, deleteCourse, addDosen, updateDosen, deleteDosen,
     addPJ, updatePJ, deletePJ,
     addMahasiswa, updateMahasiswa, deleteMahasiswa, importMahasiswaPreview, importMahasiswaCommit,
-    addToRoster, removeFromRoster,
+    addToRoster, addBatchToRoster, removeFromRoster,
     login, logout, menuOpen, setMenuOpen,
     semesterFilter, setSemesterFilter,
     toasts, showToast, dismissToast

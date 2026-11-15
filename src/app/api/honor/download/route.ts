@@ -3,6 +3,7 @@ import pool from "@/lib/db";
 import { buildInitialCourses } from "@/lib/data";
 import { generateHonorExcel } from "@/lib/generateExcel";
 import { parseDosenList } from "@/lib/types";
+import { autoSequenceHonorRows } from "@/lib/format";
 
 function formatDate(date: any): string | undefined {
   if (!date) return undefined;
@@ -54,12 +55,14 @@ function buildFallbackRows({ month, year }: { month?: string; year?: string }) {
           mk: m.nama,
           met: r.metode || m.tipe,
           kls: m.kelas,
+          ke: r.ke,
+          topik: r.topik,
         });
       });
     });
   });
 
-  return rows;
+  return autoSequenceHonorRows(rows);
 }
 
 async function collectHonorRows({ month, year }: { month?: string; year?: string }) {
@@ -87,25 +90,31 @@ async function collectHonorRows({ month, year }: { month?: string; year?: string
           if (month !== "all" && monthNum !== month) continue;
         }
 
+        const jamMulai = p.jam_mulai ? p.jam_mulai.slice(0, 5) : "";
+        const jamSelesai = p.jam_selesai ? p.jam_selesai.slice(0, 5) : "";
+
         const dosenNames = parseDosenList(p.dosen_pengajar || c.koordinator, knownDosenNames);
         dosenNames.forEach((dosenNama) => {
           rows.push({
+            id: p.id,
             dsn: dosenNama,
             status: statusByName.get(dosenNama),
             tgl: tglStr,
-            a: p.jam_mulai ? p.jam_mulai.slice(0, 5) : "",
-            b: p.jam_selesai ? p.jam_selesai.slice(0, 5) : "",
+            a: jamMulai,
+            b: jamSelesai,
             mnt: p.durasi_menit || 0,
             jam: p.jumlah_jam || 0,
             mk: c.nama,
             met: p.metode || c.tipe,
             kls: c.kelas,
+            ke: p.ke,
+            topik: p.topik,
           });
         });
       }
     }
 
-    if (rows.length > 0) return rows;
+    if (rows.length > 0) return autoSequenceHonorRows(rows);
     return buildFallbackRows({ month, year });
   } catch (error: any) {
     console.warn("Database export unavailable, menggunakan data fallback untuk Excel:", error?.message || error);

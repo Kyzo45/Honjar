@@ -1,4 +1,10 @@
 import type { MataKuliah, Row } from "./types";
+import { ACADEMIC_CONFIG } from "@/config/academic";
+
+export let fallbackPJ: any[] = [
+  { id: 3, nim: "4211001", nama: "Rifqi Aulia", angkatan: "2021", noHp: "", username: "4211001", password: "123456" },
+  { id: 4, nim: "2350081023", nama: "Rifqi Aulia", angkatan: "2023", noHp: "", username: "2350081023", password: "123456" },
+];
 
 /* =========================================================
    DATA CONTOH — diambil dari dokumen asli program studi
@@ -117,5 +123,6 @@ export function buildInitialCourses(): MataKuliah[] {
     jamMulai: m.jamMulai,
     jamSelesai: m.jamSelesai,
     ruangan: m.ruangan,
+    tahunAjaran: ACADEMIC_CONFIG.tahunAjaran,
   }));
 }

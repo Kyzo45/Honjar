@@ -1,14 +1,7 @@
 "use client";
 
 import { useApp } from "@/context/AppContext";
-
-const SEMESTER_OPTIONS = [1, 3, 5, 7];
-
-const formatSemesterLabel = (semester: number | "all") => {
-  if (semester === "all") return "Ganjil/Genap 2026/2027 · Semua semester";
-  const period = semester % 2 === 0 ? "Genap" : "Ganjil";
-  return `${period} 2026/2027 · Semester ${semester}`;
-};
+import { ACADEMIC_CONFIG, getActiveSemesterNumbers, formatSemesterOptionLabel } from "@/config/academic";
 
 export default function Topbar() {
   const { view, title, sub, go, setMenuOpen, semesterFilter, setSemesterFilter } = useApp();
@@ -29,13 +22,13 @@ export default function Topbar() {
             onChange={(e) => setSemesterFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
             aria-label="Filter semester mata kuliah"
           >
-            <option value="all">{formatSemesterLabel("all")}</option>
-            {SEMESTER_OPTIONS.map((s) => (
-              <option key={s} value={s}>{formatSemesterLabel(s)}</option>
+            <option value="all">{formatSemesterOptionLabel("all")}</option>
+            {getActiveSemesterNumbers().map((s) => (
+              <option key={s} value={s}>{formatSemesterOptionLabel(s)}</option>
             ))}
           </select>
         ) : (
-          <span className="term">2026/2027</span>
+          <span className="term">{ACADEMIC_CONFIG.tahunAjaran}</span>
         )}
         {view === "ledger" && (
           <button className="btn btn-sm" onClick={() => go("mk")}>

@@ -73,7 +73,7 @@ export default function MkView() {
 
   const filteredCourses = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return courses.filter((m) => {
+    const list = courses.filter((m) => {
       if (semesterFilter !== "all" && m.semester !== semesterFilter) return false;
       if (!q) return true;
       return (
@@ -84,6 +84,12 @@ export default function MkView() {
         m.dosen.some((d) => d.toLowerCase().includes(q))
       );
     });
+    return list.sort((a, b) =>
+      a.semester - b.semester ||
+      a.nama.localeCompare(b.nama) ||
+      a.kelas.localeCompare(b.kelas) ||
+      (a.tipe === "Teori" ? -1 : 1)
+    );
   }, [courses, query, semesterFilter]);
 
   // Kumpulkan detail kelas yang belum terisi untuk banner PJ

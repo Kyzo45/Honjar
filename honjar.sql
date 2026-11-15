@@ -95,6 +95,7 @@ CREATE TABLE public.mata_kuliah (
     ruangan character varying(50) NOT NULL,
     koordinator character varying(100) NOT NULL,
     pj_id integer,
+    tahun_ajaran character varying(10) DEFAULT '2026/2027'::character varying NOT NULL,
     CONSTRAINT mata_kuliah_tipe_check CHECK (((tipe)::text = ANY ((ARRAY['Teori'::character varying, 'Praktikum'::character varying])::text[])))
 );
 

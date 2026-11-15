@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 import type { MataKuliah, Row, AbsentRecord } from "@/lib/types";
 import { buildInitialCourses } from "@/lib/data";
+import { ACADEMIC_CONFIG } from "@/config/academic";
 
 function formatDate(date: any): string | undefined {
   if (!date) return undefined;
@@ -69,12 +70,14 @@ export async function GET(req: Request) {
          FROM mata_kuliah mk
          LEFT JOIN mata_kuliah_pj mpj ON mpj.mata_kuliah_id = mk.id
          WHERE mk.pj_id = $1 OR mpj.pj_id = $1
-         ORDER BY mk.id ASC`,
+         ORDER BY mk.semester ASC, mk.nama ASC, mk.kelas ASC, mk.tipe DESC`,
         [Number(pjIdParam)]
       );
       coursesList = rows;
     } else {
-      const { rows } = await pool.query("SELECT * FROM mata_kuliah");
+      const { rows } = await pool.query(
+        "SELECT * FROM mata_kuliah ORDER BY semester ASC, nama ASC, kelas ASC, tipe DESC"
+      );
       coursesList = rows;
     }
 
@@ -226,6 +229,7 @@ export async function GET(req: Request) {
         jamMulai: course.jam_mulai ? course.jam_mulai.slice(0, 5) : "—",
         jamSelesai: course.jam_selesai ? course.jam_selesai.slice(0, 5) : "—",
         ruangan: course.ruangan,
+        tahunAjaran: course.tahun_ajaran || ACADEMIC_CONFIG.tahunAjaran,
       };
     });
 
@@ -276,7 +280,8 @@ async function insertNewRoster(
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { kode, nama, kelas, sks, koor, dosen, pjId, pjIds, tipe, semester, hari, jamMulai, jamSelesai, ruangan, newRoster } = body;
+  const { kode, nama, kelas, sks, koor, dosen, pjId, pjIds, tipe, semester, hari, jamMulai, jamSelesai, ruangan, newRoster, tahunAjaran } = body;
+  const targetTahunAjaran = typeof tahunAjaran === "string" && tahunAjaran.trim() ? tahunAjaran.trim() : ACADEMIC_CONFIG.tahunAjaran;
   const dosenNames: string[] = Array.isArray(dosen)
     ? dosen.map((s: string) => s.trim()).filter(Boolean)
     : [];
@@ -304,12 +309,12 @@ export async function POST(req: Request) {
     const selectedPjIds = normalizedPjIds.length > 0 ? normalizedPjIds : (resolvePjId(pjId) ? [resolvePjId(pjId) as number] : []);
     const pj_id: number | null = selectedPjIds[0] ?? null;
 
-    // 2. Simpan mata kuliah
+    // 2. Simpan mata kuliah (termasuk tahun_ajaran)
     const { rows: insResult } = await client.query(
       `INSERT INTO mata_kuliah
-      (kode, nama, sks, kelas, semester, tipe, hari, jam_mulai, jam_selesai, ruangan, koordinator, pj_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
-      [kode, nama, sks, kelas, Number(semester), tipe, hari, jamMulai, jamSelesai, ruangan, koor, pj_id]
+      (kode, nama, sks, kelas, semester, tipe, hari, jam_mulai, jam_selesai, ruangan, koordinator, pj_id, tahun_ajaran)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+      [kode, nama, sks, kelas, Number(semester), tipe, hari, jamMulai, jamSelesai, ruangan, koor, pj_id, targetTahunAjaran]
     );
     const newCourseId = insResult[0].id;
 
@@ -373,7 +378,9 @@ export async function PUT(req: Request) {
     jamMulai,
     jamSelesai,
     ruangan,
+    tahunAjaran,
   } = body;
+  const targetTahunAjaran = typeof tahunAjaran === "string" && tahunAjaran.trim() ? tahunAjaran.trim() : null;
 
   if (!id) {
     return NextResponse.json({ error: "id wajib disertakan untuk mengubah mata kuliah" }, { status: 400 });
@@ -420,9 +427,10 @@ export async function PUT(req: Request) {
         jam_selesai = $9,
         ruangan = $10,
         koordinator = $11,
-        pj_id = $12
-      WHERE id = $13`,
-      [kode, nama, sks, kelas, Number(semester), tipe, hari, jamMulai, jamSelesai, ruangan, koor, pj_id, id]
+        pj_id = $12,
+        tahun_ajaran = COALESCE($13, tahun_ajaran)
+      WHERE id = $14`,
+      [kode, nama, sks, kelas, Number(semester), tipe, hari, jamMulai, jamSelesai, ruangan, koor, pj_id, targetTahunAjaran, id]
     );
 
     // 3. Sync relasi PJ mata kuliah (banyak-ke-banyak)

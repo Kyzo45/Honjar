@@ -3,17 +3,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import type { ImportMahasiswaRow, MataKuliah, NewCourseInput } from "@/lib/types";
+import { ACADEMIC_CONFIG } from "@/config/academic";
+import { addMinutes } from "@/lib/format";
 
 interface Props {
   onClose: () => void;
   onSubmit: (input: NewCourseInput) => Promise<{ success: boolean; error?: string }>;
   course?: MataKuliah;
+  isDuplicate?: boolean;
 }
 
 const onlyDigits = (s: string) => s.replace(/\D/g, "");
-const SEMESTER_OPTIONS = [1, 3, 5, 7];
 
-export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
+export default function CourseFormModal({ onClose, onSubmit, course, isDuplicate }: Props) {
   const { dosenList, pjList, courses, importMahasiswaPreview } = useApp();
 
   const [kode, setKode] = useState(course?.kode || "");
@@ -31,9 +33,19 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
   const [jamMulai, setJamMulai] = useState(course?.jamMulai || "07:00");
   const [jamSelesai, setJamSelesai] = useState(course?.jamSelesai || "08:40");
   const [ruangan, setRuangan] = useState(course?.ruangan || "R.301");
+  const [tahunAjaran, setTahunAjaran] = useState(course?.tahunAjaran || ACADEMIC_CONFIG.tahunAjaran);
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const kodeRef = useRef<HTMLInputElement>(null);
+
+  // Hitung otomatis jam selesai dari SKS (1 SKS = 50 menit)
+  const handleAutoCalcJamSelesai = (start: string, sksVal: string) => {
+    const match = sksVal.match(/\d+/);
+    const count = match ? parseInt(match[0], 10) : 2;
+    const duration = (count > 0 ? count : 2) * 50;
+    const nextEnd = addMinutes(start, duration);
+    setJamSelesai(nextEnd);
+  };
 
   // Kombobox koordinator dosen
   const [koorPickerOpen, setKoorPickerOpen] = useState(false);
@@ -50,10 +62,13 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
   const [pjSearch, setPjSearch] = useState("");
   const pjPickerRef = useRef<HTMLDivElement>(null);
 
-  // Roster awal mahasiswa — input manual, upload Excel, dan/atau salin dari mata
-  // kuliah lain, dikirim bersama form ini hanya saat membuat mata kuliah baru.
-  // Untuk mata kuliah yang sudah ada, roster dikelola lewat menu Daftar Kelas.
-  const [newRoster, setNewRoster] = useState<{ nim: string; nama: string; angkatan: string }[]>([]);
+  // Roster awal mahasiswa — jika duplikat dari mata kuliah yang sudah ada roster, langsung salin
+  const [newRoster, setNewRoster] = useState<{ nim: string; nama: string; angkatan: string }[]>(
+    isDuplicate && course?.roster
+      ? course.roster.map((m) => ({ nim: m.nim, nama: m.nama, angkatan: m.angkatan || "" }))
+      : []
+  );
+  const [showRosterSection, setShowRosterSection] = useState(Boolean(isDuplicate && course?.roster?.length));
   const [rNim, setRNim] = useState("");
   const [rNama, setRNama] = useState("");
   const [rAngkatan, setRAngkatan] = useState("");
@@ -244,7 +259,8 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
         jamMulai,
         jamSelesai,
         ruangan: ruangan.trim(),
-        newRoster: !course && newRoster.length > 0 ? newRoster : undefined,
+        tahunAjaran: tahunAjaran.trim() || ACADEMIC_CONFIG.tahunAjaran,
+        newRoster: (!course || isDuplicate) && newRoster.length > 0 ? newRoster : undefined,
       });
 
       if (!result.success) {
@@ -258,8 +274,8 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
         hari: hari.trim(),
         jamMulai,
         jamSelesai,
-        roster: course ? course.roster.map((m) => ({ nim: m.nim, nama: m.nama, angkatan: m.angkatan || "" })) : newRoster,
-        isNew: !course,
+        roster: course && !isDuplicate ? course.roster.map((m) => ({ nim: m.nim, nama: m.nama, angkatan: m.angkatan || "" })) : newRoster,
+        isNew: Boolean(!course || isDuplicate),
       });
     } catch (err: any) {
       // Jaga-jaga: tombol tidak boleh macet meski terjadi error tak terduga
@@ -325,10 +341,22 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
     <div className="scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
         <div className="sheet-h">
-          <span className="step">{course ? "Ubah" : "Baru"}</span>
+          <span className="step">{isDuplicate ? "Duplikat" : course ? "Ubah" : "Baru"}</span>
           <div>
-            <h2 id="cfTitle">{course ? "Ubah mata kuliah" : "Tambah mata kuliah"}</h2>
-            <p>{course ? "Perbarui informasi jadwal, pengajar, atau PJ." : "Dibuat sebagai berita acara kosong, siap diisi PJ terkait."}</p>
+            <h2 id="cfTitle">
+              {isDuplicate
+                ? "Duplikat mata kuliah"
+                : course
+                  ? "Ubah mata kuliah"
+                  : "Tambah mata kuliah"}
+            </h2>
+            <p>
+              {isDuplicate
+                ? `Menyalin informasi dari ${course?.nama} (${course?.kelas}) — silakan sesuaikan kelas, tipe, atau jadwal.`
+                : course
+                  ? "Perbarui informasi jadwal, pengajar, atau PJ."
+                  : "Dibuat sebagai berita acara kosong, siap diisi PJ terkait."}
+            </p>
           </div>
           <button className="iconbtn" aria-label="Tutup" onClick={onClose}>✕</button>
         </div>
@@ -361,8 +389,10 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
               </label>
               <label className="f"><span>Semester</span>
                 <select value={semester} style={borderFor("semester")} onChange={(e) => setSemester(e.target.value)}>
-                  {SEMESTER_OPTIONS.map((value) => (
-                    <option key={value} value={String(value)}>Semester {value}</option>
+                  {ACADEMIC_CONFIG.semesterList.all.map((value) => (
+                    <option key={value} value={String(value)}>
+                      Semester {value} {value % 2 === 0 ? "(Genap)" : "(Ganjil)"}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -432,8 +462,22 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
           </fieldset>
 
           <fieldset>
-            <legend>Mahasiswa</legend>
-            {course ? (
+            <legend
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", cursor: "pointer" }}
+              onClick={() => setShowRosterSection((o) => !o)}
+            >
+              <span>Mahasiswa {newRoster.length > 0 ? `(${newRoster.length} terdaftar)` : "(Opsional)"}</span>
+              <span style={{ fontSize: "11px", color: "var(--accent)", fontWeight: "normal" }}>
+                {showRosterSection ? "▲ Tutup" : "▼ Buka Pengaturan"}
+              </span>
+            </legend>
+            {!showRosterSection ? (
+              <p className="hint" style={{ margin: "4px 0" }}>
+                {newRoster.length > 0
+                  ? `${newRoster.length} mahasiswa disalin dari mata kuliah asal. Klik 'Buka' untuk melihat/mengubah.`
+                  : "Daftar mahasiswa bisa diisi nanti lewat menu Daftar Kelas. Klik 'Buka' jika ingin mengisi sekarang."}
+              </p>
+            ) : course && !isDuplicate ? (
               <p className="hint" style={{ margin: 0 }}>
                 {course.mhs} mahasiswa terdaftar di mata kuliah ini. Tambah/keluarkan mahasiswa lewat menu <b>Daftar Kelas</b>.
               </p>
@@ -558,7 +602,26 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
                 <input type="time" value={jamMulai} style={borderFor("jamSelesai")}
                   onChange={(e) => setJamMulai(e.target.value)} />
               </label>
-              <label className="f"><span>Jam Selesai</span>
+              <label className="f">
+                <span>
+                  Jam Selesai{" "}
+                  <button
+                    type="button"
+                    onClick={() => handleAutoCalcJamSelesai(jamMulai, sks)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--accent)",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      fontSize: "11px",
+                      padding: 0,
+                    }}
+                    title="Hitung otomatis jam selesai dari SKS (1 SKS = 50 menit)"
+                  >
+                    (Hitung dari SKS)
+                  </button>
+                </span>
                 <input type="time" value={jamSelesai} style={borderFor("jamSelesai")}
                   onChange={(e) => setJamSelesai(e.target.value)} />
               </label>
@@ -665,7 +728,13 @@ export default function CourseFormModal({ onClose, onSubmit, course }: Props) {
           <span className="hint">{course ? "Perubahan langsung memengaruhi rekapitulasi." : "Berita acara 16 pertemuan dibuat otomatis, kosong."}</span>
           <button className="btn" onClick={onClose}>Batal</button>
           <button className="btn btn-p" onClick={handleSubmit} disabled={saving}>
-            {saving ? "Menyimpan..." : course ? "Simpan Perubahan" : "Simpan mata kuliah"}
+            {saving
+              ? "Menyimpan..."
+              : isDuplicate
+                ? "Simpan Sebagai Mata Kuliah Baru"
+                : course
+                  ? "Simpan Perubahan"
+                  : "Simpan mata kuliah"}
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { verifyPassword } from "@/lib/auth";
-import { fallbackPJ } from "@/app/api/pj/route";
+import { fallbackPJ } from "@/lib/data";
 
 export async function POST(req: Request) {
   let body: any = {};

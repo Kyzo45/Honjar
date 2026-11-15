@@ -168,6 +168,7 @@ export interface MataKuliah {
   jamMulai: string;
   jamSelesai: string;
   ruangan: string;
+  tahunAjaran?: string;
 }
 
 export interface NewMahasiswaInput {
@@ -234,6 +235,7 @@ export interface NewCourseInput {
   jamMulai: string;
   jamSelesai: string;
   ruangan: string;
+  tahunAjaran?: string;
   // Mahasiswa awal yang diinput manual/diimpor lewat form ini saat mata kuliah
   // baru dibuat. Server menyimpannya ke tabel mahasiswa (jika NIM belum ada)
   // lalu mendaftarkannya ke KRS mata kuliah ini.

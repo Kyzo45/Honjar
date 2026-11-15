@@ -110,6 +110,13 @@ export default function SheetModal({ course, row }: Props) {
   const aTagClass = absen === 0 ? "t-done" : absen <= 3 ? "t-wait" : "t-off";
   const aTagLabel = absen === 0 ? "Lengkap" : `${absen} tidak hadir`;
 
+  // Deteksi jika tanggal dan jam sama persis dengan pertemuan lain di mata kuliah ini (human error PJ)
+  const conflictingMeeting = course.rows.find((other) => {
+    if (other.tipe !== "kuliah" || other.ke === row.ke) return false;
+    if (!other.tgl || !other.jam) return false;
+    return other.tgl === tgl && other.jam[0] === mulai && other.jam[1] === selesai;
+  }) as KuliahRow | undefined;
+
   const available = roster.filter(
     ({ nim, nama }) =>
       !absentList.some((a) => a.nim === nim) &&
@@ -225,6 +232,32 @@ export default function SheetModal({ course, row }: Props) {
                   onChange={(e) => { setSelesai(e.target.value); if (jamError) { setJamError(false); setValidationMsg(null); } }} />
               </label>
             </div>
+            {conflictingMeeting && (
+              <div
+                style={{
+                  padding: "9px 12px",
+                  borderRadius: "var(--r)",
+                  background: "#FFFBEB",
+                  border: "1px solid #FDE68A",
+                  color: "#92400E",
+                  fontSize: "12px",
+                  lineHeight: "1.45",
+                  margin: "0 0 12px",
+                  display: "flex",
+                  gap: "8px",
+                  alignItems: "flex-start",
+                }}
+              >
+                <span style={{ fontSize: "15px", lineHeight: "1" }}>⚠️</span>
+                <div>
+                  <b>Peringatan Bentrok Waktu:</b> Tanggal dan jam ({tgl}, {mulai}–{selesai}) ini sama persis dengan <b>Pertemuan ke-{conflictingMeeting.ke}</b>{conflictingMeeting.topik ? ` (${conflictingMeeting.topik})` : ""}.
+                  <br />
+                  <span style={{ color: "#78350F" }}>
+                    Jika ini sesi lanjutan di hari yang sama, mohon sesuaikan jamnya (misal jam berikutnya) agar rekapan honor mengajar dosen tidak tercatat kembar di Excel.
+                  </span>
+                </div>
+              </div>
+            )}
             {validationMsg && (
               <p style={{ color: "var(--rose)", fontSize: "12px", margin: "0 0 12px" }}>{validationMsg}</p>
             )}

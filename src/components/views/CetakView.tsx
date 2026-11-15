@@ -3,25 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { fmtTgl } from "@/lib/format";
+import { ACADEMIC_CONFIG } from "@/config/academic";
+import KopSurat from "@/components/KopSurat";
 
 interface CoursePageProps {
   m: any;
 }
 
 function CoursePage({ m }: CoursePageProps) {
+  const periodName = m.semester % 2 === 0 ? "Genap" : "Ganjil";
+
   return (
     <div className="page">
-      <div className="page-kop">
-        <img src="/logo-yayasan.jpeg" alt="Logo Yayasan" className="page-kop-logo" />
-        <div className="page-kop-text">
-          <b>YAYASAN KARTIKA EKA PAKSI</b>
-          <b style={{ color: "var(--ink)", fontSize: "11px", fontWeight: "700" }}>UNIVERSITAS JENDERAL ACHMAD YANI (UNJANI)</b>
-          <b>FAKULTAS ILMU DAN TEKNOLOGI KESEHATAN (FITKes)</b>
-          <b>PROGRAM STUDI TEKNOLOGI LABORATORIUM MEDIS (D4)</b>
-          <span>Kampus: Jl. Terusan Jenderal Sudirman-Cimahi Tlp.(022 ) 6631622–6631623</span>
-        </div>
-        <img src="/logo-unjani.png" alt="Logo Unjani" className="page-kop-logo" />
-      </div>
+      <KopSurat />
       <h4 style={{ margin: "14px 0 10px", fontWeight: "700" }}>Berita Acara Kuliah</h4>
       <div className="page-meta">
         <div>
@@ -31,7 +25,7 @@ function CoursePage({ m }: CoursePageProps) {
         </div>
         <div>
           <b>Tingkat / semester</b> : {m.kelas} / Semester {m.semester}<br />
-          <b>Semester / T.A.</b> : Ganjil 2026/2027<br />
+          <b>Semester / T.A.</b> : {periodName} {ACADEMIC_CONFIG.tahunAjaran}<br />
           <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
             <b style={{ whiteSpace: "nowrap" }}>Dosen</b> :
             <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
@@ -106,7 +100,13 @@ export default function CetakView() {
   const filteredCourses = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = q ? courses.filter((c) => c.nama.toLowerCase().includes(q)) : courses;
-    return [...list].sort((a, b) => a.nama.localeCompare(b.nama));
+    return [...list].sort(
+      (a, b) =>
+        a.semester - b.semester ||
+        a.nama.localeCompare(b.nama) ||
+        a.kelas.localeCompare(b.kelas) ||
+        (a.tipe === "Teori" ? -1 : 1)
+    );
   }, [courses, query]);
 
   // Kalau mata kuliah yang lagi dipilih tersaring keluar oleh filter, pindah ke

@@ -1,6 +1,8 @@
 import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
+import { ACADEMIC_CONFIG, getFullSemesterTitle } from "@/config/academic";
+import { autoSequenceHonorRows } from "@/lib/format";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
@@ -146,12 +148,12 @@ function writeGroupedSheet(
   ];
 
   // Header Judul Dokumen
-  worksheet.getCell("A1").value = "REKAPITULASI JAM MENGAJAR DOSEN PROGRAM STUDI TEKNOLOGI LABORATORIUM MEDIK (D4)";
+  worksheet.getCell("A1").value = `REKAPITULASI JAM MENGAJAR DOSEN ${ACADEMIC_CONFIG.institusi.prodi}`;
   worksheet.getCell("A1").font = { name: "Times New Roman", size: 12, bold: true };
   worksheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
   worksheet.mergeCells("A1:K1");
 
-  worksheet.getCell("A2").value = `SEMESTER GANJIL TA. 2026/2027`;
+  worksheet.getCell("A2").value = getFullSemesterTitle().toUpperCase();
   worksheet.getCell("A2").font = { name: "Times New Roman", size: 10, bold: true };
   worksheet.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
   worksheet.mergeCells("A2:K2");
@@ -270,20 +272,21 @@ function writeGroupedSheet(
 
   // Tanda Tangan Ka. Prodi
   const signatureRow = rowNum + 2;
-  worksheet.getCell(signatureRow, 8).value = `Cimahi, ${currentDate}`;
+  worksheet.getCell(signatureRow, 8).value = `${ACADEMIC_CONFIG.institusi.kota}, ${currentDate}`;
   worksheet.getCell(signatureRow, 8).font = { name: "Times New Roman", size: 10 };
-  worksheet.getCell(signatureRow + 1, 8).value = "Ka. Prodi TLM D4";
+  worksheet.getCell(signatureRow + 1, 8).value = ACADEMIC_CONFIG.pejabat.jabatan;
   worksheet.getCell(signatureRow + 1, 8).font = { name: "Times New Roman", size: 10, bold: true };
-  worksheet.getCell(signatureRow + 5, 8).value = "Gina Khairinisa, M.Imun";
+  worksheet.getCell(signatureRow + 5, 8).value = ACADEMIC_CONFIG.pejabat.nama;
   worksheet.getCell(signatureRow + 5, 8).font = { name: "Times New Roman", size: 10, bold: true };
-  worksheet.getCell(signatureRow + 6, 8).value = "NID. 4121 282 88";
+  worksheet.getCell(signatureRow + 6, 8).value = ACADEMIC_CONFIG.pejabat.nid ? `NID. ${ACADEMIC_CONFIG.pejabat.nid}` : "";
   worksheet.getCell(signatureRow + 6, 8).font = { name: "Times New Roman", size: 10 };
 }
 
 export async function generateHonorExcel(payload: any): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
 
-  const rows: any[] = Array.isArray(payload?.rows) ? payload.rows : [];
+  const rawRows: any[] = Array.isArray(payload?.rows) ? payload.rows : [];
+  const rows: any[] = autoSequenceHonorRows(rawRows);
   const monthName = String(payload?.monthName || "Semua Periode");
   const currentDate = String(payload?.currentDate || new Date().toISOString().slice(0, 10));
 

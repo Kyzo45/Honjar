@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { fmtTgl, jamAjar, menit } from "@/lib/format";
+import { fmtTgl, jamAjar, menit, autoSequenceHonorRows } from "@/lib/format";
 import { parseDosenList } from "@/lib/types";
 
 interface HonorRow {
   dsn: string; tgl: string; a: string; b: string;
   mnt: number; jam: number; mk: string; met: string; kls: string;
+  ke?: number; topik?: string;
 }
 
 // 12 bulan lepas dari tahun — tahunnya dipilih terpisah lewat dropdown Tahun,
@@ -53,7 +54,8 @@ export default function HonorView() {
     return `${bulan} ${tahun}`;
   }, [selectedMonth, selectedYear]);
 
-  const rows: HonorRow[] = [];
+  const rawRows: HonorRow[] = [];
+
   courses.forEach((m) => {
     m.rows.forEach((r) => {
       if (r.tipe !== "kuliah" || !r.topik) return;
@@ -63,14 +65,29 @@ export default function HonorView() {
         if (selectedYear !== "all" && year !== selectedYear) return;
         if (selectedMonth !== "all" && monthNum !== selectedMonth) return;
       }
-      const mnt = menit(r.jam![0], r.jam![1]);
+      const jamA = r.jam ? r.jam[0] : "";
+      const jamB = r.jam ? r.jam[1] : "";
+      const mnt = menit(jamA, jamB);
       const dosenNames = parseDosenList(r.dosen || m.koor, dosenList.map((dosen) => dosen.nama));
-      dosenNames.forEach((dsn) => rows.push({
-        dsn, tgl: r.tgl!, a: r.jam![0], b: r.jam![1],
-        mnt, jam: jamAjar(mnt), mk: m.nama, met: r.metode!, kls: m.kelas,
-      }));
+      dosenNames.forEach((dsn) => {
+        rawRows.push({
+          dsn,
+          tgl: r.tgl!,
+          a: jamA,
+          b: jamB,
+          mnt,
+          jam: jamAjar(mnt),
+          mk: m.nama,
+          met: r.metode || m.tipe,
+          kls: m.kelas,
+          ke: r.ke,
+          topik: r.topik,
+        });
+      });
     });
   });
+
+  const rows = autoSequenceHonorRows(rawRows);
   rows.sort((x, y) => x.dsn.localeCompare(y.dsn) || x.tgl.localeCompare(y.tgl) || x.a.localeCompare(y.a));
 
   const grouped = new Map<string, HonorRow[]>();

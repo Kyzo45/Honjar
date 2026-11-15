@@ -46,16 +46,24 @@ export default function MonitorView() {
 
   const filteredCourses = useMemo(() => {
     const query = pjQuery.trim().toLocaleLowerCase("id-ID");
-    if (!query) return courses;
+    const list = !query
+      ? [...courses]
+      : courses.filter((course) => {
+          const selectedPjIds = course.pjIds?.length ? course.pjIds : (course.pjId ? [course.pjId] : []);
+          const assignedNames = selectedPjIds
+            .map((id) => pjList.find((pj) => pj.id === id)?.nama)
+            .filter((name): name is string => Boolean(name));
+          return [course.pj, ...(course.pjNames || []), ...assignedNames]
+            .some((name) => name.toLocaleLowerCase("id-ID").includes(query));
+        });
 
-    return courses.filter((course) => {
-      const selectedPjIds = course.pjIds?.length ? course.pjIds : (course.pjId ? [course.pjId] : []);
-      const assignedNames = selectedPjIds
-        .map((id) => pjList.find((pj) => pj.id === id)?.nama)
-        .filter((name): name is string => Boolean(name));
-      return [course.pj, ...(course.pjNames || []), ...assignedNames]
-        .some((name) => name.toLocaleLowerCase("id-ID").includes(query));
-    });
+    return list.sort(
+      (a, b) =>
+        a.semester - b.semester ||
+        a.nama.localeCompare(b.nama) ||
+        a.kelas.localeCompare(b.kelas) ||
+        (a.tipe === "Teori" ? -1 : 1)
+    );
   }, [courses, pjList, pjQuery]);
 
   return (
